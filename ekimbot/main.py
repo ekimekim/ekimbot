@@ -1,7 +1,7 @@
 import sys
 import logging
 
-import geventirc
+import geventirc.autoclient
 
 import config
 
@@ -18,8 +18,8 @@ def main(**options):
 	logging.basicConfig(stream=sys.stderr, level=loglevel)
 
 	global client
-	client = geventirc.Client(config.host, config.nick, config.port,
-	                          config.local_hostname, config.server_name, config.real_name)
+	client = geventirc.autoclient.AutoClient(config.host, config.nick, config.port,
+	                                         config.local_hostname, config.server_name, config.real_name)
 
 	# TODO replace this with a proper plugin system
 	import plugins
