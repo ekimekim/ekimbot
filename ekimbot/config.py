@@ -8,8 +8,9 @@ local_hostname = None
 server_name = None
 real_name = None
 
-def load_config(conffile, **kwargs):
+def load_config(conffile=None, **kwargs):
 	g = globals()
 	g.update(kwargs)
-	execfile(conffile, g)
-	g.update(kwargs)
+	if conffile:
+		execfile(conffile, g)
+		g.update(kwargs)

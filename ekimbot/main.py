@@ -8,7 +8,6 @@ import config
 client = None
 
 def main(**options):
-	options.setdefault('conffile', './ekimbot.conf')
 	config.load_config(**options)
 
 	loglevel = config.loglevel
