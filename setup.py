@@ -8,4 +8,5 @@ setup(
 		"gevent>=1.0",
 	],
 	packages=find_packages(),
+	package_dir={'':'lib'},
 )
