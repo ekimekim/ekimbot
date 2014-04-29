@@ -11,5 +11,5 @@ real_name = None
 def load_config(conffile, **kwargs):
 	g = globals()
 	g.update(kwargs)
-	execfile(filename, g)
+	execfile(conffile, g)
 	g.update(kwargs)
