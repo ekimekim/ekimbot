@@ -3,7 +3,7 @@ loglevel = 'DEBUG'
 
 host = None # required
 nick = 'ekimbot'
-port = 194
+port = 6667
 local_hostname = None
 server_name = None
 real_name = None
