@@ -1,16 +1,22 @@
+from pyconfig import Config
 
-loglevel = 'DEBUG'
+config = Config()
 
-host = None # required
-nick = 'ekimbot'
-port = 6667
-local_hostname = None
-server_name = None
-real_name = None
+# log level - specify as integer or level string
+config.register('loglevel', long_opts=['log'], default='INFO')
 
-def load_config(conffile=None, **kwargs):
-	g = globals()
-	g.update(kwargs)
-	if conffile:
-		execfile(conffile, g)
-		g.update(kwargs)
+# irc options
+config.register('host') # required
+config.register('nick', default='ekimbot')
+config.register('port', default=6667, map_fn=int)
+config.register('password')
+config.register('ident')
+config.register('real_name')
+
+split_on = lambda arg: (lambda value: value.split(arg))
+# paths to search for plugins, list or ":"-seperated string
+config.register('plugin_paths', default=[], map_fn=split_on(':'))
+# what plugins should be loaded by default, list or whitespace-seperated string
+config.register('enabled_plugins', default=[], map_fn=split_on(None))
+# what channels should be joined, list or whitespace-seperated string
+config.register('channels', default=[], map_fn=split_on(None))
