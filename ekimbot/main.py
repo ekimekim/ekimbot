@@ -45,7 +45,3 @@ def main(**options):
 
 	client.start()
 	client.wait_for_stop()
-
-
-if __name__ == '__main__':
-	main()
