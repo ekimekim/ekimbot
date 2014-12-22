@@ -3,25 +3,30 @@ import logging
 
 from girc import Client
 from plugins import Plugin
+from classtricks import classproperty
 
 from config import config
 
 
-# The way that the plugin system works is such that plugins are inherently global - they are modules.
-# Thus, it makes no sense for client to not be global.
-# Making it global in this way is the simplest way to access it from plugins.
-client = None
-
-
 class BotPlugin(Plugin):
-	"""Plugins should register message handlers with client.
-	There are no special hooks."""
-	# XXX Due to the way message handlers work, these plugins CANNOT BE UNLOADED.
+	"""Plugins should register message handlers with self.client
+	"""
+
+	@classproperty
+	def load_paths(cls):
+		return config.plugin_paths
+
+	def __init__(self, client):
+		super(BotPlugin, self).__init__(client)
+		self.client = client
+		self.init()
+
+	def init(self):
+		"""Called when plugin is enabled. You should add your client handlers here."""
+		pass
 
 
 def main(**options):
-	global client
-
 	config.load(user_config=True, argv=True, env=True, **options)
 
 	loglevel = config.loglevel
@@ -32,13 +37,12 @@ def main(**options):
 	if not config.host:
 		raise ValueError("You must specify a host")
 
-	BotPlugin.load_paths = config.plugin_paths
-
 	client = Client(config.host, config.nick, port=config.port, password=config.password, ident=config.ident,
 	                real_name=config.real_name)
 
 	for plugin in config.enabled_plugins:
 		BotPlugin.load(plugin)
+		BotPlugin.enable(plugin, client)
 
 	for channel in config.channels:
 		client.channel(channel).join()
