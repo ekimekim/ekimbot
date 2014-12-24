@@ -15,11 +15,18 @@ class PlugopsPlugin(BotPlugin):
 		name, command, arg = words
 		if not client.matches_nick(name):
 			return
-		if command != 'load':
-			return
-		try:
+		def load(arg):
 			BotPlugin.load(arg)
 			BotPlugin.enable(arg, self.client)
+		dispatch = dict(
+			load = load,
+			unload = BotPlugin.unload,
+			reload = BotPlugin.reload,
+		)
+		if command not in dispatch:
+			return
+		try:
+			dispatch[command](arg)
 		except Exception as ex:
 			reply = "Failed to load plugin {!r}: {}: {}".format(arg, type(ex).__name__, ex)
 		else:
