@@ -2,28 +2,9 @@ import sys
 import logging
 
 from girc import Client
-from plugins import Plugin
-from classtricks import classproperty
 
-from config import config
-
-
-class BotPlugin(Plugin):
-	"""Plugins should register message handlers with self.client
-	"""
-
-	@classproperty
-	def load_paths(cls):
-		return config.plugin_paths
-
-	def __init__(self, client):
-		super(BotPlugin, self).__init__(client)
-		self.client = client
-		self.init()
-
-	def init(self):
-		"""Called when plugin is enabled. You should add your client handlers here."""
-		pass
+from ekimbot.config import config
+from ekimbot.plugin import BotPlugin
 
 
 def main(**options):
