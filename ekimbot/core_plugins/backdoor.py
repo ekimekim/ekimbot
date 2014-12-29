@@ -1,5 +1,5 @@
 
-from ekimbot.botplugin import BotPlugin, CommandHandler
+from ekimbot.botplugin import BotPlugin
 
 from gevent.backdoor import BackdoorServer
 
