@@ -61,6 +61,7 @@ class EmailHandler(logging.Handler):
 
 class AlertPlugin(BotPlugin):
 	"""Sets up a logging handler to email logs above a certain level"""
+	name = 'logalert'
 	LEVEL = logging.WARNING
 	FORMAT = ("%(levelname)s in %(name)s at %(asctime)s\n"
 	          "%(message)s\n\n"
