@@ -93,7 +93,7 @@ class CommandHandler(Handler):
 	def _handle(self, client, msg, instance=None):
 		args = self._get_args(msg.payload)
 		if len(args) < self.nargs:
-			_reply(self.client, msg, "Command {!r} requires at least {} args".format(' '.join(self.name), self.nargs))
+			_reply(client, msg, "Command {!r} requires at least {} args".format(' '.join(self.name), self.nargs))
 		args = [msg] + list(args)
 		if instance:
 			args = [instance] + args

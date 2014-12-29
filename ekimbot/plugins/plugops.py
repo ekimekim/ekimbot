@@ -11,6 +11,7 @@ class PlugopsPlugin(BotPlugin):
 		success = set()
 		past_verb = verb.rstrip('e') + 'ed' # yeah this is nowhere near complete, but close enough
 		for arg in args:
+			self.logger.debug("{} {}".format(verb, arg))
 			try:
 				func(arg)
 			except Exception as ex:
@@ -20,8 +21,8 @@ class PlugopsPlugin(BotPlugin):
 				self.reply(msg, "Failure to {} plugin {!r} with {}: {}".format(
 				                verb, arg, type(ex).__name__, ex))
 			else:
-				success.add(arg)
 				self.logger.info("{} plugin {!r}".format(past_verb.capitalize(), arg))
+				success.add(arg)
 		if success and msg:
 			self.reply(msg, "{} plugin(s): {}".format(past_verb.capitalize(), ', '.join(map(repr, success))))
 
@@ -38,10 +39,10 @@ class PlugopsPlugin(BotPlugin):
 		self.try_operation(msg, BotPlugin.reload, "reload", modules)
 
 	@CommandHandler("plugin enable", 1)
-	def enable(self, msg, *modules):
-		self.try_operation(msg, lambda name: BotPlugin.enable(name, self.client), "enable", modules)
+	def enable(self, msg, *plugins):
+		self.try_operation(msg, lambda name: BotPlugin.enable(name, self.client), "enable", plugins)
 
 	@CommandHandler("plugin disable", 1)
-	def disable(self, msg, *modules):
-		self.try_operation(msg, lambda name: BotPlugin.disable(name, self.client), "disable", modules)
+	def disable(self, msg, *plugins):
+		self.try_operation(msg, lambda name: BotPlugin.disable(name, self.client), "disable", plugins)
 
