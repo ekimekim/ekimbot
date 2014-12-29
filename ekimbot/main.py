@@ -14,6 +14,10 @@ def main(**options):
 	if isinstance(loglevel, basestring):
 		loglevel = logging._levelNames[loglevel.upper()]
 	logging.basicConfig(stream=sys.stderr, level=loglevel)
+	if config.logfile:
+		handler = logging.FileHandler(config.logfile)
+		handler.setFormatter(logging.Formatter(logging.BASIC_FORMAT))
+		logging.getLogger().addHandler(handler)
 
 	if not config.host:
 		raise ValueError("You must specify a host")
