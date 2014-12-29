@@ -14,16 +14,16 @@ def send(subject, text):
 	args = config.logalert
 
 	msg = MIMEText(text)
-	msg['From'] = args.smtp_user
-	msg['To'] = args.target
+	msg['From'] = args['smtp_user']
+	msg['To'] = args['target']
 	msg['Subject'] = subject
 
-	server = smtplib.SMTP(*args.smtp_server)
+	server = smtplib.SMTP(*args['smtp_server'])
 	server.ehlo() # Send greeting
 	server.starttls() # Switch to SSL
 	server.ehlo() # Send greeting again now that we're on SSL
-	server.login(args.smtp_user, args.smtp_password)
-	server.sendmail(args.smtp_user, args.target, msg.as_string())
+	server.login(args['smtp_user'], args['smtp_password'])
+	server.sendmail(args['smtp_user'], args['target'], msg.as_string())
 	server.close()
 
 
@@ -49,14 +49,19 @@ class EmailHandler(logging.Handler):
 		super(EmailHandler, self).close()
 
 	def emit(self, record):
-		if self.limit <= 0:
-			return
-		self.limit -= 1
-		subject = "Alert from ekimbot instance {self.client._nick}@{self.client.host}:{self.client.port}".format(self=self)
-		text = self.format(record)
-		if not self.limit:
-			text += '\nNote: Rate limit reached. Further alerts will be ignored.'
-		send(subject, text)
+		try:
+			if self.limit <= 0:
+				return
+			self.limit -= 1
+			subject = "Alert from ekimbot instance {self.client._nick}@{self.client.hostname}:{self.client.port}".format(self=self)
+			text = self.format(record)
+			if not self.limit:
+				text += '\nNote: Rate limit reached. Further alerts will be ignored.'
+			send(subject, text)
+		except Exception:
+			root_logger = logging.getLogger()
+			if self not in root_logger.handlers:
+				root_logger.warning("Failed to emit log in {}".format(self), exc_info=True)
 
 
 class AlertPlugin(BotPlugin):
@@ -75,5 +80,6 @@ class AlertPlugin(BotPlugin):
 		self.client.logger.addHandler(self.log_handler)
 
 	def cleanup(self):
+		self.client.logger.removeHandler(self.log_handler)
 		self.log_handler.close()
 		super(AlertPlugin, self).cleanup()
