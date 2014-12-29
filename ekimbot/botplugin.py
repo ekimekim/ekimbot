@@ -30,6 +30,7 @@ class BotPlugin(Plugin):
 	def __init__(self, client):
 		super(BotPlugin, self).__init__(client)
 		self.client = client
+		self.logger = client.logger.getChild(self.name)
 		for handler in self.find_handlers().values():
 			handler.register(self.client)
 		self.init()
@@ -47,7 +48,7 @@ class BotPlugin(Plugin):
 	def find_handlers(self):
 		"""Return a map {attr: value} for all attributes of cls that are a Handler."""
 		# scan for handlers
-		ret = {key: value for key, value in get_resolved_dict(self) if isinstance(value, Handler)}
+		ret = {key: value for key, value in get_resolved_dict(self).items() if isinstance(value, Handler)}
 		# re-fetch them via getattr so __get__ works as intended
 		ret = {key: getattr(self, key) for key in ret}
 		return ret

@@ -4,7 +4,7 @@ import logging
 from girc import Client
 
 from ekimbot.config import config
-from ekimbot.plugin import BotPlugin
+from ekimbot.botplugin import BotPlugin
 
 
 def main(**options):

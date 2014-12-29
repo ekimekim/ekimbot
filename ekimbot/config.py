@@ -20,3 +20,6 @@ config.register('plugin_paths', default=[], map_fn=split_on(':'))
 config.register('enabled_plugins', default=[], map_fn=split_on(None))
 # what channels should be joined, list or whitespace-seperated string
 config.register('channels', default=[], map_fn=split_on(None))
+
+# command prefix, only run commands when they're prefixed by this exact string
+config.register('command_prefix', default='ekimbot: ')

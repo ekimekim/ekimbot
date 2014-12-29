@@ -1,37 +1,47 @@
 
-from ekimbot.main import BotPlugin
+from ekimbot.botplugin import BotPlugin, CommandHandler
 
 
 class PlugopsPlugin(BotPlugin):
 	name = 'plugops'
 
-	def init(self):
-		self.client.add_handler(self.load_plugin, command='PRIVMSG')
+	def try_operation(self, msg, func, verb, args):
+		"""Some common code that reports success/fail to user,
+		or lets errors raise if not called as part of handling a message (if msg is None)."""
+		success = set()
+		past_verb = verb.rstrip('e') + 'ed' # yeah this is nowhere near complete, but close enough
+		for arg in args:
+			try:
+				func(arg)
+			except Exception as ex:
+				self.logger.warning("Failed to {} plugin {!r}".format(verb, arg), exc_info=True)
+				if not msg:
+					raise
+				self.reply(msg, "Failure to {} plugin {!r} with {}: {}".format(
+				                verb, arg, type(ex).__name__, ex))
+			else:
+				success.add(arg)
+				self.logger.info("{} plugin {!r}".format(past_verb.capitalize(), arg))
+		if success and msg:
+			self.reply(msg, "{} plugin(s): {}".format(past_verb.capitalize(), ', '.join(map(repr, success))))
 
-	def load_plugin(self, client, msg):
-		words = msg.payload.split()
-		if len(words) != 3:
-			return
-		name, command, arg = words
-		if not client.matches_nick(name):
-			return
-		def load(arg):
-			BotPlugin.load(arg)
-			BotPlugin.enable(arg, self.client)
-		dispatch = dict(
-			load = load,
-			unload = BotPlugin.unload,
-			reload = BotPlugin.reload,
-		)
-		if command not in dispatch:
-			return
-		try:
-			dispatch[command](arg)
-		except Exception as ex:
-			reply = "Failed to load plugin {!r}: {}: {}".format(arg, type(ex).__name__, ex)
-		else:
-			reply = "Loaded plugin {!r}".format(arg)
-		client.msg(msg.targets, reply)
+	@CommandHandler("plugin load", 1)
+	def load(self, msg, *modules):
+		self.try_operation(msg, BotPlugin.load, "load", modules)
 
-	def cleanup(self):
-		self.client.rm_handler(self.load_plugin)
+	@CommandHandler("plugin unload", 1)
+	def unload(self, msg, *modules):
+		self.try_operation(msg, BotPlugin.unload, "unload", modules)
+
+	@CommandHandler("plugin reload", 1)
+	def reload(self, msg, *modules):
+		self.try_operation(msg, BotPlugin.reload, "reload", modules)
+
+	@CommandHandler("plugin enable", 1)
+	def enable(self, msg, *modules):
+		self.try_operation(msg, lambda name: BotPlugin.enable(name, self.client), "enable", modules)
+
+	@CommandHandler("plugin disable", 1)
+	def disable(self, msg, *modules):
+		self.try_operation(msg, lambda name: BotPlugin.disable(name, self.client), "disable", modules)
+
