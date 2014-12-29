@@ -4,9 +4,8 @@ setup(
 	name='ekimbot',
 	description='Just another IRC Bot',
 	requires=[
-		"geventirc",
-		"gevent>=1.0",
+		"girc",
+		"gevent(>=1.0)",
 	],
 	packages=find_packages(),
-	package_dir={'':'lib'},
 )
