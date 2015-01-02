@@ -1,10 +1,20 @@
 import sys
 import logging
+import random
 
+import gevent
+import gtools
 from girc import Client
+from backoff import Backoff
 
 from ekimbot.config import config
 from ekimbot.botplugin import BotPlugin
+
+RETRY_START = 1
+RETRY_LIMIT = 300
+RETRY_FACTOR = 1.5
+
+main_logger = logging.getLogger('ekimbot')
 
 
 def main(**options):
@@ -19,18 +29,61 @@ def main(**options):
 		handler.setFormatter(logging.Formatter(logging.BASIC_FORMAT))
 		logging.getLogger().addHandler(handler)
 
-	if not config.host:
-		raise ValueError("You must specify a host")
+	main_logger.info("Starting up")
 
-	client = Client(config.host, config.nick, port=config.port, password=config.password, ident=config.ident,
-	                real_name=config.real_name)
-
-	for plugin in config.enabled_plugins:
+	for plugin in config.plugins:
+		main_logger.debug("Load {}".format(plugin))
 		BotPlugin.load(plugin)
-		BotPlugin.enable(plugin, client)
 
-	for channel in config.channels:
-		client.channel(channel).join()
+	gtools.gmap(lambda options: run_client(**options), config.clients)
 
-	client.start()
-	client.wait_for_stop()
+	main_logger.info("All clients exited")
+
+
+def run_client(host=None, nick='ekimbot', port=6667, password=None, ident=None, real_name=None,
+               plugins=(), channels=(), **junk):
+	if not host:
+		main_logger.error("No host given for client")
+		return
+
+	name = '{}@{}:{}'.format(nick, host.replace('.', '_'), port)
+	logger = main_logger.getChild(name)
+	retry_timer = Backoff(RETRY_START, RETRY_LIMIT, RETRY_FACTOR)
+
+	while True:
+		try:
+			logger.info("Starting client")
+			client = Client(host, nick, port=port, password=password, ident=ident, real_name=real_name,
+			                logger=logger)
+
+			logger.info("Enabling {} plugins".format(len(plugins)))
+			for plugin in plugins:
+				logger.debug("Enabling plugin {}".format(plugin))
+				BotPlugin.enable(plugin, client)
+			plugin = None # don't leave long-lived useless references
+
+			logger.info("Joining {} channels".format(len(channels)))
+			for channel in channels:
+				logger.debug("Joining channel {}".format(channel))
+				client.channel(channel).join()
+
+			client.start()
+			logger.debug("Client started")
+			client.wait_for_stop()
+
+		except Exception:
+			logger.warning("Client failed, re-connecting in {}s".format(retry_timer.peek()), exc_info=True)
+
+			# save then disable enabled plugins
+			# note that by overwriting plugins arg we will re-enable all plugins that were enabled, not configured plugins
+			plugins = [type(plugin) for plugin in BotPlugin.enabled if plugin.client is client]
+			for plugin in plugins:
+				BotPlugin.disable(plugin, client)
+			plugin = None # don't leave long-lived useless references
+
+			gevent.sleep(retry_timer.get())
+			continue
+
+		break
+
+	logger.info("Client exited cleanly, not re-connecting")
