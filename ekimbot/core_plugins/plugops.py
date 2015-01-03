@@ -1,8 +1,8 @@
 
-from ekimbot.botplugin import BotPlugin, CommandHandler
+from ekimbot.botplugin import BotPlugin, ClientPlugin, CommandHandler
 
 
-class PlugopsPlugin(BotPlugin):
+class PlugopsPlugin(ClientPlugin):
 	name = 'plugops'
 
 	def try_operation(self, msg, func, verb, args):
@@ -38,11 +38,23 @@ class PlugopsPlugin(BotPlugin):
 	def reload(self, msg, *modules):
 		self.try_operation(msg, BotPlugin.reload, "reload", modules)
 
+	def _with_client(self, disable=False):
+		"""Returns a function to pass to try_operation that will correctly enable or disable
+		plugins, giving them the correct args depending on whether they are a ClientPlugin
+		or not."""
+		def _with_client_inner(name):
+			if disable and name not in BotPlugin.loaded_by_name:
+				return
+			plugin = BotPlugin.loaded_by_name[name]
+			method = 'disable' if disable else 'enable'
+			args = (self.client,) if issubclass(plugin, ClientPlugin) else ()
+			return getattr(plugin, method)(*args)
+		return _with_client_inner
+
 	@CommandHandler("plugin enable", 1)
 	def enable(self, msg, *plugins):
-		self.try_operation(msg, lambda name: BotPlugin.enable(name, self.client), "enable", plugins)
+		self.try_operation(msg, self._with_client(False), "enable", plugins)
 
 	@CommandHandler("plugin disable", 1)
 	def disable(self, msg, *plugins):
-		self.try_operation(msg, lambda name: BotPlugin.disable(name, self.client), "disable", plugins)
-
+		self.try_operation(msg, self._with_client(True), "disable", plugins)

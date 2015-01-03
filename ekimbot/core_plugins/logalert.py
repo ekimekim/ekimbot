@@ -6,7 +6,7 @@ from email.MIMEText import MIMEText
 
 import gevent
 
-from ekimbot.botplugin import BotPlugin
+from ekimbot.botplugin import ClientPlugin
 from ekimbot.config import config
 
 
@@ -64,7 +64,7 @@ class EmailHandler(logging.Handler):
 				root_logger.warning("Failed to emit log in {}".format(self), exc_info=True)
 
 
-class AlertPlugin(BotPlugin):
+class AlertPlugin(ClientPlugin):
 	"""Sets up a logging handler to email logs above a certain level"""
 	name = 'logalert'
 	LEVEL = logging.WARNING

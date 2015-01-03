@@ -18,17 +18,21 @@ def _reply(client, msg, text):
 
 
 class BotPlugin(Plugin):
-	"""Plugins may either define handlers on methods (which will automatically register to the client
-	when the plugin is enabled), or define handlers on self.client in init().
-	Default cleanup() will automatically unregister handlers that were automatically registered.
-	"""
-
+	"""Generic plugin. You should only use this if your plugin does not use a specific irc client instance."""
 	@classproperty
 	def load_paths(cls):
 		return config.plugin_paths
 
+
+class ClientPlugin(BotPlugin):
+	"""Plugins that interact with a client.
+	Plugins may either define handlers on methods (which will automatically register to the client
+	when the plugin is enabled), or define handlers on self.client in init().
+	Default cleanup() will automatically unregister handlers that were automatically registered.
+	"""
+
 	def __init__(self, client):
-		super(BotPlugin, self).__init__(client)
+		super(ClientPlugin, self).__init__(client)
 		self.client = client
 		self.logger = client.logger.getChild(self.name)
 		for handler in self.find_handlers().values():

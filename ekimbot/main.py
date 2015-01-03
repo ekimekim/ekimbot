@@ -8,7 +8,7 @@ from girc import Client
 from backoff import Backoff
 
 from ekimbot.config import config
-from ekimbot.botplugin import BotPlugin
+from ekimbot.botplugin import BotPlugin, ClientPlugin
 
 RETRY_START = 1
 RETRY_LIMIT = 300
@@ -31,9 +31,13 @@ def main(**options):
 
 	main_logger.info("Starting up")
 
-	for plugin in config.plugins:
+	for plugin in config.load_plugins:
 		main_logger.debug("Load {}".format(plugin))
 		BotPlugin.load(plugin)
+
+	for plugin in config.global_plugins:
+		main_logger.debug("Enable {}".format(plugin))
+		BotPlugin.enable(plugin)
 
 	gtools.gmap(lambda options: run_client(**options), config.clients)
 
@@ -59,7 +63,7 @@ def run_client(host=None, nick='ekimbot', port=6667, password=None, ident=None, 
 			logger.info("Enabling {} plugins".format(len(plugins)))
 			for plugin in plugins:
 				logger.debug("Enabling plugin {}".format(plugin))
-				BotPlugin.enable(plugin, client)
+				ClientPlugin.enable(plugin, client)
 			plugin = None # don't leave long-lived useless references
 
 			logger.info("Joining {} channels".format(len(channels)))
@@ -76,9 +80,9 @@ def run_client(host=None, nick='ekimbot', port=6667, password=None, ident=None, 
 
 			# save then disable enabled plugins
 			# note that by overwriting plugins arg we will re-enable all plugins that were enabled, not configured plugins
-			plugins = [type(plugin) for plugin in BotPlugin.enabled if plugin.client is client]
+			plugins = [type(plugin) for plugin in ClientPlugin.enabled if plugin.client is client]
 			for plugin in plugins:
-				BotPlugin.disable(plugin, client)
+				ClientPlugin.disable(plugin, client)
 			plugin = None # don't leave long-lived useless references
 
 			gevent.sleep(retry_timer.get())
