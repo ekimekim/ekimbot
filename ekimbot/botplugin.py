@@ -1,6 +1,6 @@
 
 from plugins import Plugin
-from classtricks import classproperty, get_resolved_dict
+from classtricks import classproperty, get_resolved_dict, dotdict
 
 from girc import Handler, Privmsg
 
@@ -19,6 +19,12 @@ def _reply(client, msg, text):
 
 class BotPlugin(Plugin):
 	"""Generic plugin. You should only use this if your plugin does not use a specific irc client instance."""
+	defaults = {}
+
+	@classproperty
+	def load_paths(cls):
+		return config.plugin_paths
+
 	def __init__(self, *args):
 		super(BotPlugin, self).__init__(*args)
 		self.logger = self.get_logger()
@@ -29,9 +35,15 @@ class BotPlugin(Plugin):
 		from ekimbot.main import main_logger
 		return main_logger.getChild(self.name)
 
-	@classproperty
-	def load_paths(cls):
-		return config.plugin_paths
+	@property
+	def config(self):
+		"""Returns config for this plugin, which should be a dict of the plugin's name inside the main config.
+		Uses defaults from the "defaults" attr.
+		Returned object is a dotdict.
+		"""
+		d = dotdict(self.defaults)
+		d.update(config.get(self.name, {}))
+		return d
 
 
 class ClientPlugin(BotPlugin):
@@ -70,6 +82,13 @@ class ClientPlugin(BotPlugin):
 
 	def reply(self, msg, text):
 		_reply(self.client, msg, text)
+
+	@property
+	def config(self):
+		"""As BotHandler but also searches for config under plugin name inside client's config"""
+		d = super(ClientPlugin, self).config
+		d.update(self.client.config.get(self.name, {}))
+		return d
 
 
 class CommandHandler(Handler):

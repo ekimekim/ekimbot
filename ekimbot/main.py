@@ -44,7 +44,7 @@ def main(**options):
 
 
 def run_client(host=None, nick='ekimbot', port=6667, password=None, ident=None, real_name=None,
-               plugins=(), channels=(), **junk):
+               plugins=(), channels=(), **extra):
 	if not host:
 		main_logger.error("No host given for client")
 		return
@@ -58,6 +58,7 @@ def run_client(host=None, nick='ekimbot', port=6667, password=None, ident=None, 
 			logger.info("Starting client")
 			client = Client(host, nick, port=port, password=password, ident=ident, real_name=real_name,
 			                logger=logger)
+			client.config = extra
 
 			logger.info("Enabling {} plugins".format(len(plugins)))
 			for plugin in plugins:

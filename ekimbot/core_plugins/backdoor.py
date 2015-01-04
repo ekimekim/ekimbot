@@ -6,10 +6,12 @@ from gevent.backdoor import BackdoorServer
 
 class BackdoorPlugin(BotPlugin):
 	name = 'backdoor'
-	PORT = 1234
+	defaults = {
+		'port': 1234,
+	}
 
 	def init(self):
-		self.server = BackdoorServer(('localhost', self.PORT))
+		self.server = BackdoorServer(('localhost', self.config.port))
 		self.server.start()
 
 	def cleanup(self):

@@ -9,9 +9,14 @@ from ekimbot.config import config
 class ConfigManagerPlugin(ClientPlugin):
 	name = 'config_manager'
 
-	@CommandHandler('config load', 1)
+	@CommandHandler('config load', 0)
 	def load_config(self, msg, *args):
 		path = ' '.join(args)
+		if not path:
+			path = config.conf_file
+			if not path:
+				self.reply(msg, "No known config file - please specify a path")
+				return
 		self.logger.debug("Loading config from {!r}".format(path))
 		try:
 			config.from_file(path)
