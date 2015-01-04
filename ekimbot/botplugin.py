@@ -97,8 +97,8 @@ class CommandHandler(Handler):
 		if not payload.startswith(config.command_prefix):
 			return
 		payload = payload[len(config.command_prefix):]
-		payload = payload.lower().split()
-		if payload[:len(self.name)] != self.name:
+		payload = payload.split()
+		if [word.lower() for word in payload[:len(self.name)]] != self.name:
 			return
 		return payload[len(self.name):]
 
