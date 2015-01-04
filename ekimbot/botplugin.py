@@ -19,6 +19,11 @@ def _reply(client, msg, text):
 
 class BotPlugin(Plugin):
 	"""Generic plugin. You should only use this if your plugin does not use a specific irc client instance."""
+	def __init__(self):
+		# lazy import to break cyclic dependency
+		from ekimbot.main import main_logger
+		self.logger = main_logger.getChild(self.name)
+
 	@classproperty
 	def load_paths(cls):
 		return config.plugin_paths

@@ -7,7 +7,9 @@ config.register('loglevel', long_opts=['log'], default='INFO')
 # paths to search for plugins, list or ":"-seperated string
 config.register('plugin_paths', default=[], map_fn=lambda value: value.split(':'))
 # plugins to load on startup, list or space-seperated string
-config.register('plugins', default=[], map_fn=lambda value: value.split())
+config.register('load_plugins', default=[], map_fn=lambda value: value.split())
+# global plugins to enable, list or space-seperated string
+config.register('global_plugins', default=[], map_fn=lambda value: value.split())
 
 # irc options
 # Each client should take host, optionally nick, port, password, ident, real_name, plugins, channels
