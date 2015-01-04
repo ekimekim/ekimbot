@@ -48,7 +48,7 @@ class PlugopsPlugin(ClientPlugin):
 			plugin = BotPlugin.loaded_by_name[name]
 			method = 'disable' if disable else 'enable'
 			args = (self.client,) if issubclass(plugin, ClientPlugin) else ()
-			return getattr(plugin, method)(*args)
+			return getattr(plugin, method)(plugin, *args)
 		return _with_client_inner
 
 	@CommandHandler("plugin enable", 1)
