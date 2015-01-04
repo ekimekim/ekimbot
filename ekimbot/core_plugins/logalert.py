@@ -70,8 +70,7 @@ class AlertPlugin(BotPlugin):
 	FORMAT = ("%(levelname)s in %(name)s at %(asctime)s\n"
 	          "%(message)s\n\n"
 	          "Logged from %(funcName)s:%(lineno)s in %(pathname)s\n"
-	          "From process %(process)d on {}\n"
-	         ).format(socket.gethostname())
+	         )
 	target_logger = 'ekimbot'
 
 	@property
