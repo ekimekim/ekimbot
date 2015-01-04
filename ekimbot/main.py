@@ -1,6 +1,5 @@
 import sys
 import logging
-import random
 
 import gevent
 import gtools
