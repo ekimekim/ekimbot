@@ -1,12 +1,13 @@
 
 import logging
+import os
 import smtplib
 import socket
 from email.MIMEText import MIMEText
 
 import gevent
 
-from ekimbot.botplugin import ClientPlugin
+from ekimbot.botplugin import BotPlugin
 from ekimbot.config import config
 
 
@@ -31,9 +32,8 @@ class EmailHandler(logging.Handler):
 	LIMIT = 10
 	LIMIT_INTERVAL = 3600
 
-	def __init__(self, client, level=0):
+	def __init__(self, level=0):
 		super(EmailHandler, self).__init__(level)
-		self.client = client
 		if config.logalert is None:
 			raise ValueError("Cannot start log alerting; no configration given")
 		self.limit = self.LIMIT
@@ -53,7 +53,7 @@ class EmailHandler(logging.Handler):
 			if self.limit <= 0:
 				return
 			self.limit -= 1
-			subject = "Alert from ekimbot instance {self.client._nick}@{self.client.hostname}:{self.client.port}".format(self=self)
+			subject = "Alert from ekimbot process {}@{}".format(os.getpid(), socket.gethostname())
 			text = self.format(record)
 			if not self.limit:
 				text += '\nNote: Rate limit reached. Further alerts will be ignored.'
@@ -64,22 +64,28 @@ class EmailHandler(logging.Handler):
 				root_logger.warning("Failed to emit log in {}".format(self), exc_info=True)
 
 
-class AlertPlugin(ClientPlugin):
+class AlertPlugin(BotPlugin):
 	"""Sets up a logging handler to email logs above a certain level"""
 	name = 'logalert'
-	LEVEL = logging.WARNING
 	FORMAT = ("%(levelname)s in %(name)s at %(asctime)s\n"
 	          "%(message)s\n\n"
 	          "Logged from %(funcName)s:%(lineno)s in %(pathname)s\n"
 	          "From process %(process)d on {}\n"
 	         ).format(socket.gethostname())
+	target_logger = 'ekimbot'
+
+	@property
+	def level(self):
+		level = config.logalert.get('level', None) if config.logalert else None
+		level = level or 'WARNING'
+		return logging._levelNames[level.upper()]
 
 	def init(self):
-		self.log_handler = EmailHandler(self.client, self.LEVEL)
+		self.log_handler = EmailHandler(self.level)
 		self.log_handler.setFormatter(logging.Formatter(self.FORMAT))
-		self.client.logger.addHandler(self.log_handler)
+		logging.getLogger(self.target_logger).addHandler(self.log_handler)
 
 	def cleanup(self):
-		self.client.logger.removeHandler(self.log_handler)
+		logging.getLogger(self.target_logger).removeHandler(self.log_handler)
 		self.log_handler.close()
 		super(AlertPlugin, self).cleanup()
