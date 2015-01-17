@@ -32,7 +32,13 @@ class PlugopsPlugin(ClientPlugin):
 
 	@CommandHandler("plugin unload", 1)
 	def unload(self, msg, *modules):
-		self.try_operation(msg, BotPlugin.unload, "unload", modules)
+		loaded = []
+		for module in modules:
+			if module in BotPlugin.loaded_by_name:
+				loaded.append(module)
+			else:
+				self.reply(msg, "No such module {!r} is loaded".format(module))
+		self.try_operation(msg, BotPlugin.unload, "unload", loaded)
 
 	@CommandHandler("plugin reload", 1)
 	def reload(self, msg, *modules):
