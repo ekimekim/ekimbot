@@ -8,12 +8,12 @@ import os
 from pyconfig import Config
 
 from ekimbot import core_plugins
+from ekimbot.utils import list_modules
 
 
 # Core plugin auto-detect
 core_plugins_path = os.path.dirname(core_plugins.__file__)
-core_plugins_list = [name[:-3] for name in os.listdir(core_plugins_path)
-                     if name.endswith('.py') and not name.startswith('_')]
+core_plugins_list = list_modules(core_plugins_path)
 
 
 class BotConfig(Config):
