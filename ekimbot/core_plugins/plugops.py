@@ -1,5 +1,6 @@
 
-from ekimbot.botplugin import BotPlugin, ClientPlugin, CommandHandler
+from ekimbot.botplugin import BotPlugin, ClientPlugin
+from ekimbot.commands import CommandHandler
 
 
 class PlugopsPlugin(ClientPlugin):

@@ -2,7 +2,8 @@
 import logging
 import ast
 
-from ekimbot.botplugin import ClientPlugin, CommandHandler
+from ekimbot.botplugin import ClientPlugin
+from ekimbot.commands import CommandHandler
 from ekimbot.config import config
 
 
