@@ -11,12 +11,12 @@ from ekimbot.botplugin import BotPlugin
 from ekimbot.config import config
 
 
-def send(subject, text):
+def send(target, subject, text):
 	args = config.logalert
 
 	msg = MIMEText(text)
 	msg['From'] = args['smtp_user']
-	msg['To'] = args['target']
+	msg['To'] = target
 	msg['Subject'] = subject
 
 	server = smtplib.SMTP(*args['smtp_server'])
@@ -24,7 +24,7 @@ def send(subject, text):
 	server.starttls() # Switch to SSL
 	server.ehlo() # Send greeting again now that we're on SSL
 	server.login(args['smtp_user'], args['smtp_password'])
-	server.sendmail(args['smtp_user'], args['target'], msg.as_string())
+	server.sendmail(args['smtp_user'], target, msg.as_string())
 	server.close()
 
 
@@ -36,6 +36,7 @@ class EmailHandler(logging.Handler):
 		super(EmailHandler, self).__init__(level)
 		if config.logalert is None:
 			raise ValueError("Cannot start log alerting; no configration given")
+		self.target = config.logalert['target']
 		self.limit = self.LIMIT
 		self.limit_reset = gevent.spawn(self._limit_reset)
 
@@ -57,7 +58,7 @@ class EmailHandler(logging.Handler):
 			text = self.format(record)
 			if not self.limit:
 				text += '\nNote: Rate limit reached. Further alerts will be ignored.'
-			send(subject, text)
+			send(self.target, subject, text)
 		except Exception:
 			root_logger = logging.getLogger()
 			if self not in root_logger.handlers:
