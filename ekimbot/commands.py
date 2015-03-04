@@ -26,20 +26,21 @@ class CommandHandler(Handler):
 		)
 		super(CommandHandler, self).__init__(*args, **kwargs)
 
-	def _get_args(self, payload):
-		if not payload.startswith(config.command_prefix):
+	def _get_args(self, client, payload):
+		prefix = client.config['command_prefix']
+		if not payload.startswith(prefix):
 			return
-		payload = payload[len(config.command_prefix):]
+		payload = payload[len(prefix):]
 		payload = payload.split()
 		if [word.lower() for word in payload[:len(self.name)]] != self.name:
 			return
 		return payload[len(self.name):]
 
-	def _match_payload(self, payload):
-		return self._get_args(payload) is not None
+	def _match_payload(self, client, payload):
+		return self._get_args(client, payload) is not None
 
 	def _handle(self, client, msg, instance=None):
-		args = self._get_args(msg.payload)
+		args = self._get_args(client, msg.payload)
 		if len(args) < self.nargs:
 			reply(client, msg, "Command {!r} requires at least {} args".format(' '.join(self.name), self.nargs))
 		args = [msg] + list(args)
