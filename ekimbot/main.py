@@ -34,11 +34,11 @@ def main(**options):
 		main_logger.debug("Load {}".format(plugin))
 		BotPlugin.load(plugin)
 
-	for plugin in config.global_plugins:
+	for plugin in config.all_global_plugins:
 		main_logger.debug("Enable {}".format(plugin))
 		BotPlugin.enable(plugin)
 
-	gtools.gmap(lambda options: run_client(**options), config.clients)
+	gtools.gmap(lambda options: run_client(**options), config.clients_with_defaults)
 
 	main_logger.info("All clients exited")
 
