@@ -34,7 +34,7 @@ def main(**options):
 		main_logger.debug("Load {}".format(plugin))
 		BotPlugin.load(plugin)
 
-	for plugin in config.all_global_plugins:
+	for plugin in config.global_plugins:
 		main_logger.debug("Enable {}".format(plugin))
 		BotPlugin.enable(plugin)
 
