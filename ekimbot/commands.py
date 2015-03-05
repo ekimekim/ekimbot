@@ -11,20 +11,22 @@ class CommandHandler(Handler):
 	A command handler matches if all the following are true:
 		* msg is a PRIVMSG beginning with the configured command prefix.
 		* After being split on whitespace, the leading words match the values in the "name" arg, case-insensitive.
-	It is checked that there are at least nargs further words. If there isn't, an error message is replied.
-	(msg, *args) is passed to the callback, where args is the words after the leading words that match "name".
+	(msg, *args, **kwargs) is passed to the callback, where args is the words after the leading words
+	that match "name", minus any "--key=value" pairs, which are passed as kwargs instead.
 	"""
-	def __init__(self, name, nargs, *args, **kwargs):
+	def __init__(self, name, *args, **kwargs):
 		"""Name may be either a string like "mycmd subcmd", or a list like ["mycmd", "subcmd"]
 		nargs should be int and represents the *smallest* number of allowed args.
 		Optional kwargs:
 			help: Help string that describes command. First line is taken as a summary, subsequent lines
 			      are long description. If not given, taken from callback.
+			usage: String to display to the user if the args are wrong (ie. if handler raises TypeError)
+		Passes other args (ie. match and ordering args) though to Handler
 		"""
 		self.name = name.split() if isinstance(name, basestring) else name
 		self.name = [word.lower() for word in self.name]
-		self.nargs = nargs
 		self._help = kwargs.pop('help', None)
+		self.usage = kwargs.pop('usage', None)
 		kwargs.update(
 			command='PRIVMSG',
 			payload=self._match_payload,
@@ -37,7 +39,7 @@ class CommandHandler(Handler):
 			return
 		payload = payload[len(prefix):]
 		payload = payload.split()
-		if [word.lower() for word in payload[:len(self.name)]] != self.name:
+		if any(word.lower() != expected for word, expected in zip(payload, self.name)):
 			return
 		return payload[len(self.name):]
 
@@ -60,12 +62,19 @@ class CommandHandler(Handler):
 
 	def _handle(self, client, msg, instance=None):
 		args = self._get_args(client, msg.payload)
-		if len(args) < self.nargs:
-			reply(client, msg, "Command {!r} requires at least {} args".format(' '.join(self.name), self.nargs))
+		args, kwargs = parse_argv(args)
 		args = [msg] + list(args)
 		if instance:
 			args = [instance] + args
-		return self(*args)
+		try:
+			return self(*args, **kwargs)
+		except TypeError:
+			if self.usage:
+				error_msg = "Bad arguments. Usage: {name} {usage}"
+			else:
+				error_msg = "Bad arguments for {name}"
+			error_msg.format(name=" ".join(self.name), usage=self.usage)
+			reply(client, msg, error_msg)
 
 
 class ChannelCommandHandler(CommandHandler):
