@@ -27,12 +27,12 @@ class PlugopsPlugin(ClientPlugin):
 		if success and msg:
 			self.reply(msg, "{} plugin(s): {}".format(past_verb.capitalize(), ', '.join(map(repr, success))))
 
-	@CommandHandler("plugin load", 1)
+	@CommandHandler("plugin load", usage="MODULE")
 	def load(self, msg, *modules):
 		"""Load a plugin from disk if not already loaded"""
 		self.try_operation(msg, BotPlugin.load, "load", modules)
 
-	@CommandHandler("plugin unload", 1)
+	@CommandHandler("plugin unload", usage="MODULE")
 	def unload(self, msg, *modules):
 		"""Globally unload a plugin, disabling any enabled instances"""
 		loaded = []
@@ -43,7 +43,7 @@ class PlugopsPlugin(ClientPlugin):
 				self.reply(msg, "No such module {!r} is loaded".format(module))
 		self.try_operation(msg, BotPlugin.unload, "unload", loaded)
 
-	@CommandHandler("plugin reload", 1)
+	@CommandHandler("plugin reload", usage="MODULE")
 	def reload(self, msg, *modules):
 		"""Unload, then re-load, a plugin. Any instances will be re-enabled."""
 		self.try_operation(msg, BotPlugin.reload, "reload", modules)
@@ -66,12 +66,12 @@ class PlugopsPlugin(ClientPlugin):
 			return getattr(plugin, method)(plugin, *args)
 		return _with_client_inner
 
-	@CommandHandler("plugin enable", 1)
+	@CommandHandler("plugin enable", "NAME")
 	def enable(self, msg, *plugins):
 		"""Enable a plugin for this client"""
 		self.try_operation(msg, self._with_plugin_args("enable"), "enable", plugins)
 
-	@CommandHandler("plugin disable", 1)
+	@CommandHandler("plugin disable", "NAME")
 	def disable(self, msg, *plugins):
 		"""Disable a plugin for this client"""
 		self.try_operation(msg, self._with_plugin_args("disable"), "disable", plugins)

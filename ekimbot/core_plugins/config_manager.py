@@ -10,7 +10,7 @@ from ekimbot.main import configure_logging
 class ConfigManagerPlugin(ClientPlugin):
 	name = 'config_manager'
 
-	@CommandHandler('config load', 0)
+	@CommandHandler('config load', usage="FILEPATH")
 	def load_config(self, msg, *args):
 		"""Load given config file (or the default) and add to existing config."""
 		path = ' '.join(args)
@@ -29,7 +29,7 @@ class ConfigManagerPlugin(ClientPlugin):
 			self.logger.info("Loaded config from {!r}".format(path))
 			self.reply(msg, "Config file {!r} loaded".format(path))
 
-	@CommandHandler('config set', 2)
+	@CommandHandler('config set', usage="KEY VALUE")
 	def set_config(self, msg, key, *value):
 		"""Set config key to value. Value may be a python literal, or raw string."""
 		value = ' '.join(value)
