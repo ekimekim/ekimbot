@@ -1,7 +1,6 @@
 
 from girc import Handler
 
-from ekimbot.config import config
 from ekimbot.utils import reply
 
 
