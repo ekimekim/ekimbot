@@ -58,7 +58,7 @@ config.register('clients', default=[])
 # update the existing value instead of overwriting it.
 config.register('client_defaults', default={
 	'command_prefix': 'ekimbot: ',
-	'plugins': ['plugops', 'config_manager'],
+	'plugins': ['plugops', 'config_manager', 'help'],
 })
 
 
