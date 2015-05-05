@@ -29,10 +29,12 @@ class PlugopsPlugin(ClientPlugin):
 
 	@CommandHandler("plugin load", 1)
 	def load(self, msg, *modules):
+		"""Load a plugin from disk if not already loaded"""
 		self.try_operation(msg, BotPlugin.load, "load", modules)
 
 	@CommandHandler("plugin unload", 1)
 	def unload(self, msg, *modules):
+		"""Globally unload a plugin, disabling any enabled instances"""
 		loaded = []
 		for module in modules:
 			if module in BotPlugin.loaded_by_name:
@@ -43,6 +45,7 @@ class PlugopsPlugin(ClientPlugin):
 
 	@CommandHandler("plugin reload", 1)
 	def reload(self, msg, *modules):
+		"""Unload, then re-load, a plugin. Any instances will be re-enabled."""
 		self.try_operation(msg, BotPlugin.reload, "reload", modules)
 
 	def _with_client(self, disable=False):
@@ -60,8 +63,10 @@ class PlugopsPlugin(ClientPlugin):
 
 	@CommandHandler("plugin enable", 1)
 	def enable(self, msg, *plugins):
+		"""Enable a plugin for this client"""
 		self.try_operation(msg, self._with_client(False), "enable", plugins)
 
 	@CommandHandler("plugin disable", 1)
 	def disable(self, msg, *plugins):
+		"""Disable a plugin for this client"""
 		self.try_operation(msg, self._with_client(True), "disable", plugins)

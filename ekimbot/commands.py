@@ -16,10 +16,14 @@ class CommandHandler(Handler):
 	def __init__(self, name, nargs, *args, **kwargs):
 		"""Name may be either a string like "mycmd subcmd", or a list like ["mycmd", "subcmd"]
 		nargs should be int and represents the *smallest* number of allowed args.
+		Optional kwargs:
+			help: Help string that describes command. First line is taken as a summary, subsequent lines
+			      are long description. If not given, taken from callback.
 		"""
 		self.name = name.split() if isinstance(name, basestring) else name
 		self.name = [word.lower() for word in self.name]
 		self.nargs = nargs
+		self._help = kwargs.pop('help', None)
 		kwargs.update(
 			command='PRIVMSG',
 			payload=self._match_payload,
@@ -38,6 +42,20 @@ class CommandHandler(Handler):
 
 	def _match_payload(self, client, payload):
 		return self._get_args(client, payload) is not None
+
+	@property
+	def help(self):
+		"""Returns (summary, long description).
+		Note that summary is just the first line of long description.
+		May return (None, None) if no help is found.
+		"""
+		helpstr = self._help
+		if self.callback and not helpstr:
+			helpstr = self.callback.__doc__
+		if not helpstr:
+			return (None, None)
+		summary = helpstr.strip().split('\n')[0]
+		return summary, helpstr
 
 	def _handle(self, client, msg, instance=None):
 		args = self._get_args(client, msg.payload)

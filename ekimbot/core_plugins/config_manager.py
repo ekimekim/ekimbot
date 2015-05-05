@@ -12,6 +12,7 @@ class ConfigManagerPlugin(ClientPlugin):
 
 	@CommandHandler('config load', 0)
 	def load_config(self, msg, *args):
+		"""Load given config file (or the default) and add to existing config."""
 		path = ' '.join(args)
 		if not path:
 			path = config.conf_file
@@ -30,6 +31,7 @@ class ConfigManagerPlugin(ClientPlugin):
 
 	@CommandHandler('config set', 2)
 	def set_config(self, msg, key, *value):
+		"""Set config key to value. Value may be a python literal, or raw string."""
 		value = ' '.join(value)
 		try:
 			value = ast.literal_eval(value)
