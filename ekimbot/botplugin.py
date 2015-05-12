@@ -1,6 +1,6 @@
 
 from plugins import Plugin
-from classtricks import classproperty, get_resolved_dict, dotdict
+from classtricks import classproperty, dotdict
 
 from girc import Handler
 
@@ -47,8 +47,7 @@ class ClientPlugin(BotPlugin):
 	def __init__(self, client):
 		self.client = client
 		super(ClientPlugin, self).__init__(client)
-		for handler in self.find_handlers().values():
-			handler.register(self.client)
+		Handler.register_all(client, self)
 
 	def get_logger(self):
 		return self.client.logger.getChild(self.name)
@@ -60,16 +59,7 @@ class ClientPlugin(BotPlugin):
 	def cleanup(self):
 		"""Called on disable. Should clean up any ongoing operations. The default one unregisters
 		methods that are Handlers."""
-		for handler in self.find_handlers().values():
-			handler.unregister(self.client)
-
-	def find_handlers(self):
-		"""Return a map {attr: value} for all attributes of cls that are a Handler."""
-		# scan for handlers
-		ret = {key: value for key, value in get_resolved_dict(self).items() if isinstance(value, Handler)}
-		# re-fetch them via getattr so __get__ works as intended
-		ret = {key: getattr(self, key) for key in ret}
-		return ret
+		Handler.unregister_all(self.client, self)
 
 	def reply(self, msg, text):
 		utils.reply(self.client, msg, text)
