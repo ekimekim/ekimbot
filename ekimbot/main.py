@@ -58,6 +58,8 @@ def run_client(host=None, nick='ekimbot', port=6667, password=None, ident=None, 
 			logger.info("Starting client")
 			client = Client(host, nick, port=port, password=password, ident=ident, real_name=real_name,
 			                logger=logger)
+			# include originals for changable args
+			extra.update(nick=nick)
 			client.config = extra
 
 			logger.info("Enabling {} plugins".format(len(plugins)))
