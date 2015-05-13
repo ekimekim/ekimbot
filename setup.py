@@ -6,6 +6,11 @@ setup(
 	requires=[
 		"girc",
 		"gevent(>=1.0)",
+		"backoff",
+		"classtricks",
+		"plugins",
+		"pyconfig",
+		"gtools",
 	],
 	packages=find_packages(),
 )
