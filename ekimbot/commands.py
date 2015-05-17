@@ -54,7 +54,7 @@ class CommandHandler(Handler):
 		if not helpstr:
 			return (None, None)
 		summary = helpstr.strip().split('\n')[0]
-		return summary, helpstr
+		return summary, '\n'.join(line.strip() for line in helpstr.split('\n'))
 
 	def _handle(self, client, msg, instance=None):
 		args = self._get_args(client, msg.payload)
