@@ -4,6 +4,8 @@ Run as __main__ for a debug check that simply prints the results of loading the 
 """
 
 import os
+import string
+import random
 
 from pyconfig import Config
 
@@ -47,6 +49,11 @@ config.register('plugin_paths', default=[core_plugins_path])
 config.register('load_plugins', default=core_plugins_list[:])
 # global_plugins - list of global plugins to enable
 config.register('global_plugins', default=[])
+
+# --- Persistence ---
+# store_path - JSON file to store persistent data - defaults to a random file in /tmp
+config.register('store_path',
+                default="/tmp/ekimbot-{}.json".format(''.join(random.choice(string.letters + string.digits) for x in range(8))))
 
 # --- Per-client options ---
 # clients - Should be a list of client option dicts containing client options.

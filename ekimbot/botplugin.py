@@ -6,6 +6,7 @@ from girc import Handler
 
 from ekimbot import utils
 from ekimbot.config import config
+from ekimbot.store import Store
 
 
 class BotPlugin(Plugin):
@@ -35,6 +36,19 @@ class BotPlugin(Plugin):
 		d = dotdict(self.defaults)
 		d.update(config.get(self.name, {}))
 		return d
+
+	@property
+	def _store(self):
+		"""Return actual store object"""
+		return Store(config.store_path)
+
+	@property
+	def store(self):
+		"""Dict which will be persisted to disk when save_store() is called."""
+		return self._store.data.setdefault(self.name, {})
+
+	def save_store(self):
+		self._store.save()
 
 
 class ClientPlugin(BotPlugin):
@@ -71,3 +85,7 @@ class ClientPlugin(BotPlugin):
 		d.update(self.client.config.get(self.name, {}))
 		return d
 
+	@property
+	def store(self):
+		"""As bothandler but additionally indexes by client name (combination of configured nick and host+port)"""
+		return super(ClientPlugin, self).store.setdefault(self.client.config['name'], {})
