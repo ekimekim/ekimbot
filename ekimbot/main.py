@@ -75,6 +75,7 @@ def run_client(host=None, nick='ekimbot', port=6667, password=None, ident=None, 
 
 			client.start()
 			logger.debug("Client started")
+			retry_timer.reset()
 			client.wait_for_stop()
 
 		except Exception:
