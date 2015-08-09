@@ -5,6 +5,7 @@ import plugins
 from girc import Handler, Client, replycodes
 
 from ekimbot.botplugin import ClientPlugin
+from ekimbot.commands import CommandHandler
 from ekimbot.main import Restart
 
 
@@ -67,6 +68,7 @@ class SlavePlugin(ClientPlugin):
 			self.check_users()
 
 	def demote(self):
+		self.logger.info("Becoming slave")
 		self.master = False
 		self.saved_plugins = set(type(plugin) for plugin in ClientPlugin.enabled
 		                         if plugin.client is self.client and plugin is not self)
@@ -79,8 +81,15 @@ class SlavePlugin(ClientPlugin):
 			self.client.stop(Restart("Unrecoverable error while entering slave mode. Reconnecting."))
 
 	def promote(self):
+		self.logger.info("Becoming master")
 		assert self.saved_plugins is not None, "SlavePlugin: promote() called before demote()"
 		self.master = True
 		for plugin_cls in self.saved_plugins:
 			ClientPlugin.enable(plugin_cls, self.client)
 		self.saved_plugins = None
+
+	@CommandHandler("abdicate", 0)
+	def abdicate(self, msg, *args):
+		self.logger.info("Stepping down as master")
+		self.demote()
+		self.client.nick = self.client.increment_nick(self.client.nick)
