@@ -86,10 +86,6 @@ def run_client(host=None, nick='ekimbot', port=6667, password=None, ident=None, 
 		except Exception as ex:
 			if isinstance(ex, Restart):
 				logger.info("Client gracefully restarted: {}".format(ex))
-				try:
-					client.quit(str(ex))
-				except Exception:
-					logger.warning("Client failed while doing final close during restart", exc_info=True)
 			else:
 				logger.warning("Client failed, re-connecting in {}s".format(retry_timer.peek()), exc_info=True)
 
