@@ -80,7 +80,8 @@ class SlavePlugin(ClientPlugin):
 			return
 
 	def promote(self):
-		assert self.saved_plugins, "SlavePlugin: promote() called before demote()"
+		assert self.saved_plugins is not None, "SlavePlugin: promote() called before demote()"
 		self.master = True
 		for plugin_cls in self.saved_plugins:
 			ClientPlugin.enable(plugin_cls, self.client)
+		self.saved_plugins = None
