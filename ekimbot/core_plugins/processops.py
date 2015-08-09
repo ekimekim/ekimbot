@@ -1,5 +1,4 @@
 
-import fcntl
 import gc
 import os
 import socket
@@ -28,11 +27,14 @@ class ProcessopsPlugin(ClientPlugin):
 		gc.disable()
 		for fd in os.listdir('/proc/self/fd'):
 			fd = int(fd)
-			# the listdir will contain the listdir's fd, thankfully we don't need to actually close anything
-			# instead, we just set close-on-exec so the exec() will do the right thing
-			flags = fcntl.fcntl(fd, fcntl.F_GETFD)
-			fcntl.fcntl(fd, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
-		os.execve(sys.executable, [sys.executable] + sys.argv, os.environ)
+			if fd <= 2:
+				continue # don't close stdin/out/err
+			# the listdir will contain the listdir's fd, so we ignore errors on close
+			try:
+				os.close(fd)
+			except OSError:
+				pass
+		os.execve(sys.executable, [sys.executable, '-m', 'ekimbot'] + sys.argv[1:], os.environ)
 
 	@CommandHandler('process stop', 0)
 	def stop(self, msg, *args):
