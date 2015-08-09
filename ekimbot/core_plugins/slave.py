@@ -5,6 +5,7 @@ import plugins
 from girc import Handler, Client, replycodes
 
 from ekimbot.botplugin import ClientPlugin
+from ekimbot.main import Restart
 
 
 class SlavePlugin(ClientPlugin):
@@ -75,8 +76,7 @@ class SlavePlugin(ClientPlugin):
 				ClientPlugin.disable(plugin_cls, self.client)
 		except plugins.Referenced:
 			self.logger.error("Failed to go into slave mode: {} plugin still referenced".format(plugin_cls))
-			self.client.quit("Unrecoverable error while entering slave mode")
-			return
+			self.client.stop(Restart("Unrecoverable error while entering slave mode. Reconnecting."))
 
 	def promote(self):
 		assert self.saved_plugins is not None, "SlavePlugin: promote() called before demote()"
