@@ -3,8 +3,9 @@ import logging
 
 import gevent
 import gtools
-from girc import Client
 from backoff import Backoff
+from girc import Client
+from plugins import Referenced
 
 from ekimbot.config import config
 from ekimbot.botplugin import BotPlugin, ClientPlugin
@@ -83,13 +84,6 @@ def run_client(host=None, nick='ekimbot', port=6667, password=None, ident=None, 
 			client.wait_for_stop()
 
 		except Exception as ex:
-			# save then disable enabled plugins
-			# note that by overwriting plugins arg we will re-enable all plugins that were enabled, not configured plugins
-			plugins = [type(plugin) for plugin in ClientPlugin.enabled if plugin.client is client]
-			for plugin in plugins:
-				ClientPlugin.disable(plugin, client)
-			plugin = None # don't leave long-lived useless references
-
 			if isinstance(ex, Restart):
 				logger.info("Client gracefully restarted: {}".format(ex))
 				try:
@@ -98,6 +92,19 @@ def run_client(host=None, nick='ekimbot', port=6667, password=None, ident=None, 
 					logger.warning("Client failed while doing final close during restart", exc_info=True)
 			else:
 				logger.warning("Client failed, re-connecting in {}s".format(retry_timer.peek()), exc_info=True)
+
+			# save then disable enabled plugins
+			# note that by overwriting plugins arg we will re-enable all plugins that were enabled, not configured plugins
+			plugins = [type(plugin) for plugin in ClientPlugin.enabled if plugin.client is client]
+			try:
+				for plugin in plugins:
+					ClientPlugin.disable(plugin, client)
+			except Referenced:
+				logger.critical("Failed to clean up after old connection: plugin {} still referenced. Client will not be restarted.".format(plugin))
+				return
+			plugin = None # don't leave long-lived useless references
+
+			if not isinstance(ex, Restart):
 				gevent.sleep(retry_timer.get())
 			continue
 
