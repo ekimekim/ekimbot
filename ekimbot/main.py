@@ -16,6 +16,10 @@ RETRY_FACTOR = 1.5
 main_logger = logging.getLogger('ekimbot')
 
 
+class Restart(Exception):
+	pass
+
+
 def main(**options):
 	config.load(user_config=True, argv=True, env=True, **options)
 
@@ -78,9 +82,7 @@ def run_client(host=None, nick='ekimbot', port=6667, password=None, ident=None, 
 			retry_timer.reset()
 			client.wait_for_stop()
 
-		except Exception:
-			logger.warning("Client failed, re-connecting in {}s".format(retry_timer.peek()), exc_info=True)
-
+		except Exception as ex:
 			# save then disable enabled plugins
 			# note that by overwriting plugins arg we will re-enable all plugins that were enabled, not configured plugins
 			plugins = [type(plugin) for plugin in ClientPlugin.enabled if plugin.client is client]
@@ -88,7 +90,15 @@ def run_client(host=None, nick='ekimbot', port=6667, password=None, ident=None, 
 				ClientPlugin.disable(plugin, client)
 			plugin = None # don't leave long-lived useless references
 
-			gevent.sleep(retry_timer.get())
+			if isinstance(ex, Restart):
+				logger.info("Client gracefully restarted: {}".format(ex))
+				try:
+					client.quit(str(ex))
+				except Exception:
+					logger.warning("Client failed while doing final close during restart", exc_info=True)
+			else:
+				logger.warning("Client failed, re-connecting in {}s".format(retry_timer.peek()), exc_info=True)
+				gevent.sleep(retry_timer.get())
 			continue
 
 		break
