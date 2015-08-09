@@ -53,12 +53,11 @@ class SlavePlugin(ClientPlugin):
 		Also called peroidically in case this happened without us being able to see it.
 		Checks if any user can be seen with master nick. If not, tries to change nick to master nick.
 		"""
-		if self.client.nick == self.master_nick:
-			return
-		for channel in self.client._channels.values():
-			if channel.users_ready.is_set() and self.master_nick in channel.users.users:
-				return
-		self.client.nick = self.master_nick
+		if self.client.nick != self.master_nick:
+			for channel in self.client._channels.values():
+				if channel.users_ready.is_set() and self.master_nick in channel.users.users:
+					return
+			self.client.nick = self.master_nick
 		self.check_nick()
 
 	def poll_check_users(self):
