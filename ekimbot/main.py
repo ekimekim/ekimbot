@@ -5,7 +5,7 @@ import gevent
 import gtools
 from backoff import Backoff
 from girc import Client
-from plugins import Referenced
+from modulemanager import Referenced
 
 from ekimbot.config import config
 from ekimbot.botplugin import BotPlugin, ClientPlugin

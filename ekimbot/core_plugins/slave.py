@@ -1,7 +1,7 @@
 
 import gevent
 
-import plugins
+import modulemanager
 from girc import Handler, Client, replycodes
 
 from ekimbot.botplugin import ClientPlugin
@@ -76,7 +76,7 @@ class SlavePlugin(ClientPlugin):
 		try:
 			for plugin_cls in self.saved_plugins:
 				ClientPlugin.disable(plugin_cls, self.client)
-		except plugins.Referenced:
+		except modulemanager.Referenced:
 			self.logger.error("Failed to go into slave mode: {} plugin still referenced".format(plugin_cls))
 			self.client.stop(Restart("Unrecoverable error while entering slave mode. Reconnecting."))
 
