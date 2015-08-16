@@ -1,7 +1,6 @@
 
 from ekimbot.botplugin import ClientPlugin
 from ekimbot.commands import CommandHandler
-from ekimbot.main import Restart
 
 
 class ClientopsPlugin(ClientPlugin):
@@ -11,7 +10,7 @@ class ClientopsPlugin(ClientPlugin):
 
 	@CommandHandler('restart', 0)
 	def restart(self, msg, *args):
-		self.client.stop(Restart("Reconnecting (administrative restart by {})".format(msg.sender)))
+		self.client.restart("Reconnecting (administrative restart by {})".format(msg.sender))
 
 	@CommandHandler('stop', 0)
 	def stop(self, msg, *args):

@@ -87,5 +87,5 @@ class ClientPlugin(BotPlugin):
 
 	@property
 	def store(self):
-		"""As bothandler but additionally indexes by client name (combination of configured nick and host+port)"""
-		return super(ClientPlugin, self).store.setdefault(self.client.config['name'], {})
+		"""As bothandler but additionally indexes by client name"""
+		return super(ClientPlugin, self).store.setdefault(self.client.name, {})

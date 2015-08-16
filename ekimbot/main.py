@@ -1,7 +1,6 @@
 import logging
 
 import gevent
-import gtools
 from backoff import Backoff
 from girc import Client
 from modulemanager import Referenced
@@ -15,9 +14,8 @@ RETRY_FACTOR = 1.5
 
 main_logger = logging.getLogger('ekimbot')
 
-
-class Restart(Exception):
-	pass
+# maps name to manager controlling client
+clients = {}
 
 
 def main(**options):
@@ -34,9 +32,25 @@ def main(**options):
 		main_logger.debug("Enable {}".format(plugin))
 		BotPlugin.enable(plugin)
 
-	gtools.gmap(lambda options: run_client(**options), config.clients_with_defaults)
+	for name in config.clients:
+		ClientManager.spawn(name)
 
-	main_logger.info("All clients exited")
+	main_logger.debug("Main going to sleep")
+	try:
+		try:
+			gevent.wait()
+			main_logger.info("Nothing running - exiting")
+		except (KeyboardInterrupt, SystemExit):
+			main_logger.info("Stopping all clients")
+			for manager in clients.values():
+				manager.client.quit("Shutting down", block=False)
+			for manager in clients.values():
+				manager.get()
+	except BaseException:
+		main_logger.exception("Failed to stop cleanly")
+		raise
+	else:
+		main_logger.info("Exited cleanly")
 
 
 def configure_logging():
@@ -59,58 +73,137 @@ def configure_logging():
 		root.addHandler(handler)
 
 
-def run_client(name, host, nick='ekimbot', port=6667, password=None, ident=None, real_name=None,
-               plugins=(), channels=(), **extra):
+class ClientManager(gevent.Greenlet):
+	"""Wrapper for a client to manage clean restarts, etc"""
+	# We mostly handle state via a synchronous main function, hence we base off Greenlet
 
-	logger = main_logger.getChild(name)
-	retry_timer = Backoff(RETRY_START, RETRY_LIMIT, RETRY_FACTOR)
+	INIT_ARGS = {'hostname', 'nick', 'port', 'password', 'ident', 'real_name'}
 
-	while True:
+	client = None
+	_can_signal = False # indicates if main loop is in good state to get a stop/restart
+
+	class _Restart(Exception):
+		"""Indicates the client manager should cleanly disconnect and reconnect"""
+
+	def __init__(self, name):
+		self.name = name
+		self.logger = main_logger.getChild(name)
+		super(ClientManager, self).__init__()
+
+	def restart(self, message):
+		"""Gracefully restart the client"""
+		# if can_signal is false, restarting isn't a valid operation (ie. we're already restarting)
+		# otherwise, send a _Restart exception to the main loop
+		if self._can_signal:
+			self.kill(self._Restart(message), block=False)
+
+	def _run(self):
+		if self.name in clients:
+			return # already running, ignore second attempt to start
+		clients[self.name] = self
+
 		try:
-			logger.info("Starting client")
-			client = Client(host, nick, port=port, password=password, ident=ident, real_name=real_name,
-			                logger=logger)
-			# include originals for changable args
-			extra.update(name=name, nick=nick)
-			client.config = extra
+			plugins = None
+			self.retry_timer = Backoff(RETRY_START, RETRY_LIMIT, RETRY_FACTOR)
 
-			logger.info("Enabling {} plugins".format(len(plugins)))
-			for plugin in plugins:
-				logger.debug("Enabling plugin {}".format(plugin))
-				ClientPlugin.enable(plugin, client)
-			plugin = None # don't leave long-lived useless references
+			while True:
+				if self.name not in config.clients_with_defaults:
+					self.logger.info("No such client, stopping")
+					return
 
-			logger.info("Joining {} channels".format(len(channels)))
-			for channel in channels:
-				logger.debug("Joining channel {}".format(channel))
-				client.channel(channel).join()
+				options = config.clients_with_defaults[self.name]
 
-			client.start()
-			logger.debug("Client started")
-			retry_timer.reset()
-			client.wait_for_stop()
+				channels = options.get('channels', [])
+				if plugins is None:
+					plugins = options.get('plugins', [])
 
-		except Exception as ex:
-			if isinstance(ex, Restart):
-				logger.info("Client gracefully restarted: {}".format(ex))
-			else:
-				logger.warning("Client failed, re-connecting in {}s".format(retry_timer.peek()), exc_info=True)
+				try:
+					self.logger.info("Starting client")
+					self.client = EkimbotClient(self.name,
+					                            logger=self.logger,
+					                            **{key: options[key] for key in self.INIT_ARGS if key in options})
 
-			# save then disable enabled plugins
-			# note that by overwriting plugins arg we will re-enable all plugins that were enabled, not configured plugins
-			plugins = [type(plugin) for plugin in ClientPlugin.enabled if plugin.client is client]
-			try:
-				for plugin in plugins:
-					ClientPlugin.disable(plugin, client)
-			except Referenced:
-				logger.critical("Failed to clean up after old connection: plugin {} still referenced. Client will not be restarted.".format(plugin))
-				return
-			plugin = None # don't leave long-lived useless references
+					self.logger.info("Enabling {} plugins".format(len(plugins)))
+					for plugin in plugins:
+						self.logger.debug("Enabling plugin {}".format(plugin))
+						ClientPlugin.enable(plugin, self.client)
+					plugin = None # don't leave long-lived useless references
 
-			if not isinstance(ex, Restart):
-				gevent.sleep(retry_timer.get())
-			continue
+					self.logger.info("Joining {} channels".format(len(channels)))
+					for channel in channels:
+						self.logger.debug("Joining channel {}".format(channel))
+						self.client.channel(channel).join()
 
-		break
+					try:
+						self._can_signal = True
+						self.client.start()
+						self.logger.debug("Client started")
+						self.retry_timer.reset()
+						self.client.wait_for_stop()
+						self.logger.info("Client exited cleanly, not re-connecting")
+						break
+					finally:
+						self._can_signal = False
 
-	logger.info("Client exited cleanly, not re-connecting")
+				except Exception as ex:
+					if isinstance(ex, self._Restart):
+						self.logger.info("Client gracefully restarting: {}".format(ex))
+						try:
+							self.client.quit(str(ex))
+						except Exception:
+							self.logger.warning("Client failed during graceful restart", exc_info=True)
+					else:
+						self.logger.warning("Client failed, re-connecting in {}s".format(self.retry_timer.peek()), exc_info=True)
+
+					if self.client:
+						# save then disable enabled plugins
+						# note that we will re-enable all plugins that were enabled, not configured plugins
+						plugins = set()
+						try:
+							# in rare cases, disabling a plugin will cause more plugins to activate (eg. slave)
+							# we keep going until no plugins are left
+							while self.client.plugins:
+								enabled = {type(plugin) for plugin in self.client.plugins}
+								for plugin in enabled:
+									ClientPlugin.disable(plugin, self.client)
+								plugins |= enabled
+						except Referenced:
+							self.logger.error("Failed to clean up after old connection: plugin {} still referenced.".format(plugin))
+							# in leiu of knowing exactly what the old client's state is, revert to config
+							plugins = options.get('plugins', [])
+						plugin = None # don't leave long-lived useless references
+
+						self.client = None
+
+					if not isinstance(ex, self._Restart):
+						gevent.sleep(self.retry_timer.get())
+
+		except Exception:
+			self.logger.critical("run_client failed with unhandled exception")
+			raise
+
+		finally:
+			assert clients[self.name] is self
+			del clients[self.name]
+
+
+class EkimbotClient(Client):
+	"""A girc Client with some ekimbot specialization"""
+
+	def __init__(self, name, **options):
+		self.name = name
+		super(EkimbotClient, self).__init__(**options)
+
+	@property
+	def config(self):
+		return config.clients_with_defaults.get(self.name, {})
+
+	@property
+	def plugins(self):
+		return {plugin for plugin in ClientPlugin.enabled if plugin.client is self}
+
+	def restart(self, message):
+		if clients[self.name].client is not self:
+			# this Client is not the active client - this is a weird situation, let's do nothing
+			return
+		clients[self.name].restart(message)

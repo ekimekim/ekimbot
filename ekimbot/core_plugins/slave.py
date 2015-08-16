@@ -6,7 +6,6 @@ from girc import Handler, Client, replycodes
 
 from ekimbot.botplugin import ClientPlugin
 from ekimbot.commands import CommandHandler
-from ekimbot.main import Restart
 
 
 class SlavePlugin(ClientPlugin):
@@ -32,6 +31,10 @@ class SlavePlugin(ClientPlugin):
 	def cleanup(self):
 		self.check_user_poller.kill()
 		super(SlavePlugin, self).cleanup()
+		# we need to restore to original state by becoming master
+		# note we disabled all callbacks first
+		if not self.master:
+			self.promote()
 
 	@property
 	def master_nick(self):
@@ -78,7 +81,7 @@ class SlavePlugin(ClientPlugin):
 				ClientPlugin.disable(plugin_cls, self.client)
 		except modulemanager.Referenced:
 			self.logger.error("Failed to go into slave mode: {} plugin still referenced".format(plugin_cls))
-			self.client.stop(Restart("Unrecoverable error while entering slave mode. Reconnecting."))
+			self.client.restart("Unrecoverable error while entering slave mode. Reconnecting.")
 
 	def promote(self):
 		self.logger.info("Becoming master")
