@@ -37,8 +37,8 @@ config = BotConfig()
 # --- Logging ---
 # log level - specify as integer or level string
 config.register('loglevel', long_opts=['log'], default='INFO')
-# log file - file to log to, or None to disable. Default to "/var/log/ekimbot.log".
-config.register('logfile', default='/var/log/ekimbot.log')
+# log file - file to log to, or None to disable (default).
+config.register('logfile', default=None)
 
 # --- Plugins ---
 # These options contain default values that should not be overwritten.
