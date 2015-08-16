@@ -48,13 +48,9 @@ def main(**options):
 	main_logger.info("All clients exited")
 
 
-def run_client(host=None, nick='ekimbot', port=6667, password=None, ident=None, real_name=None,
+def run_client(name, host, nick='ekimbot', port=6667, password=None, ident=None, real_name=None,
                plugins=(), channels=(), **extra):
-	if not host:
-		main_logger.error("No host given for client")
-		return
 
-	name = '{}@{}:{}'.format(nick, host.replace('.', '_'), port)
 	logger = main_logger.getChild(name)
 	retry_timer = Backoff(RETRY_START, RETRY_LIMIT, RETRY_FACTOR)
 

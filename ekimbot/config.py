@@ -23,9 +23,9 @@ class BotConfig(Config):
 
 	@property
 	def clients_with_defaults(self):
-		for client in self.clients:
+		for name, client in self.clients.items():
 			d = self.client_defaults.copy()
-			d.update(client)
+			d.update(client, name=name)
 			yield d
 
 
@@ -56,10 +56,10 @@ config.register('store_path',
                 default="/tmp/ekimbot-{}.json".format(''.join(random.choice(string.letters + string.digits) for x in range(8))))
 
 # --- Per-client options ---
-# clients - Should be a list of client option dicts containing client options.
+# clients - Should be a dict {name: dict containing client options}.
 # Each client should take host, optionally nick, port, password, ident, real_name, plugins, channels
 # Most of those should be obvious, plugins is what plugins to enable on startup
-config.register('clients', default=[])
+config.register('clients', default={})
 # client_defaults - As per client option dicts, but provides defaults for option dicts in clients option.
 # Note that the default value of client_defaults already defines some defaults - you probably want to
 # update the existing value instead of overwriting it.
