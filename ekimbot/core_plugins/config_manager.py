@@ -1,10 +1,10 @@
 
-import logging
 import ast
 
 from ekimbot.botplugin import ClientPlugin
 from ekimbot.commands import CommandHandler
 from ekimbot.config import config
+from ekimbot.main import configure_logging
 
 
 class ConfigManagerPlugin(ClientPlugin):
@@ -44,5 +44,4 @@ class ConfigManagerPlugin(ClientPlugin):
 		self.reply(msg, 'set config.{} = {!r}'.format(key, value))
 
 	def refresh(self):
-		logging.getLogger().setLevel(logging._levelNames[config.loglevel.upper()]
-		                             if isinstance(config.loglevel, basestring) else config.loglevel)
+		configure_logging()

@@ -1,4 +1,3 @@
-import sys
 import logging
 
 import gevent
@@ -24,15 +23,7 @@ class Restart(Exception):
 def main(**options):
 	config.load(user_config=True, argv=True, env=True, **options)
 
-	loglevel = config.loglevel
-	if isinstance(loglevel, basestring):
-		loglevel = logging._levelNames[loglevel.upper()]
-	logging.basicConfig(stream=sys.stderr, level=loglevel)
-	if config.logfile:
-		handler = logging.FileHandler(config.logfile)
-		handler.setFormatter(logging.Formatter(logging.BASIC_FORMAT))
-		logging.getLogger().addHandler(handler)
-
+	configure_logging()
 	main_logger.info("Starting up")
 
 	for plugin in config.load_plugins:
@@ -46,6 +37,26 @@ def main(**options):
 	gtools.gmap(lambda options: run_client(**options), config.clients_with_defaults)
 
 	main_logger.info("All clients exited")
+
+
+def configure_logging():
+	"""Set handlers and level on root logger as per config options.
+	Will remove any existing handlers."""
+	root = logging.getLogger()
+	for handler in root.handlers:
+		root.removeHandler(handler)
+
+	loglevel = config.loglevel
+	if isinstance(loglevel, basestring):
+		loglevel = logging._levelNames[loglevel.upper()]
+	root.setLevel(loglevel)
+
+	handlers = [logging.StreamHandler()]
+	if config.logfile:
+		handlers.append(logging.FileHandler(config.logfile))
+	for handler in handlers:
+		handler.setFormatter(logging.Formatter(logging.BASIC_FORMAT))
+		root.addHandler(handler)
 
 
 def run_client(name, host, nick='ekimbot', port=6667, password=None, ident=None, real_name=None,
