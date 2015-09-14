@@ -1,10 +1,13 @@
 
+import functools
+
 from plugins import Plugin
 from classtricks import classproperty, dotdict
 
 from girc import Handler
 
 from ekimbot import utils
+from ekimbot.commands import CommandHandler
 from ekimbot.config import config
 from ekimbot.store import Store
 
@@ -89,3 +92,20 @@ class ClientPlugin(BotPlugin):
 	def store(self):
 		"""As bothandler but additionally indexes by client name"""
 		return super(ClientPlugin, self).store.setdefault(self.client.name, {})
+
+
+def command_plugin(*args, **kwargs):
+	"""Helper utility for creating client plugins that consist of a single command.
+	Args are as per CommandHandler.
+	Plugin name is name of wrapped function.
+	Note you still need to take a `self` argument - this is the generated plugin and contains all the normal things
+	like config, store, reply...
+	"""
+	def _command_plugin(fn):
+		class _GeneratedCommandPlugin(ClientPlugin):
+			name = fn.__name__
+			command = CommandHandler(*args, **kwargs)(fn)
+		_GeneratedCommandPlugin.__name__ = "command_plugin_{}".format(fn.__name__)
+		_GeneratedCommandPlugin.__module__ = fn.__module__
+		return _GeneratedCommandPlugin
+	return _command_plugin
