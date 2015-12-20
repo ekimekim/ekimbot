@@ -61,9 +61,9 @@ class ClientPlugin(BotPlugin):
 	Default cleanup() will automatically unregister handlers that were automatically registered.
 	"""
 
-	def __init__(self, client):
+	def __init__(self, client, *args):
 		self.client = client
-		super(ClientPlugin, self).__init__(client)
+		super(ClientPlugin, self).__init__(client, *args)
 		Handler.register_all(client, self)
 
 	def get_logger(self):
