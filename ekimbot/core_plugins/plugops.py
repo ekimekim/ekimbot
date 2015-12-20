@@ -48,25 +48,30 @@ class PlugopsPlugin(ClientPlugin):
 		"""Unload, then re-load, a plugin. Any instances will be re-enabled."""
 		self.try_operation(msg, BotPlugin.reload, "reload", modules)
 
-	def _with_client(self, disable=False):
+	def _with_plugin_args(self, method):
 		"""Returns a function to pass to try_operation that will correctly enable or disable
 		plugins, giving them the correct args depending on whether they are a ClientPlugin
-		or not."""
+		or not. If name contains a ':', any additional string args may be specified seperated by commas."""
 		def _with_client_inner(name):
-			if disable and name not in BotPlugin.loaded_by_name:
+			if ':' in name:
+				name, args = name.split(':', 1)
+				args = args.split(',')
+			else:
+				args = ()
+			if method == 'disable' and name not in BotPlugin.loaded_by_name:
 				return
 			plugin = BotPlugin.loaded_by_name[name]
-			method = 'disable' if disable else 'enable'
-			args = (self.client,) if issubclass(plugin, ClientPlugin) else ()
+			if issubclass(plugin, ClientPlugin):
+				args = (self.client,) + args
 			return getattr(plugin, method)(plugin, *args)
 		return _with_client_inner
 
 	@CommandHandler("plugin enable", 1)
 	def enable(self, msg, *plugins):
 		"""Enable a plugin for this client"""
-		self.try_operation(msg, self._with_client(False), "enable", plugins)
+		self.try_operation(msg, self._with_plugin_args("enable"), "enable", plugins)
 
 	@CommandHandler("plugin disable", 1)
 	def disable(self, msg, *plugins):
 		"""Disable a plugin for this client"""
-		self.try_operation(msg, self._with_client(True), "disable", plugins)
+		self.try_operation(msg, self._with_plugin_args("disable"), "disable", plugins)

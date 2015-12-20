@@ -115,7 +115,13 @@ class ClientManager(gevent.Greenlet):
 
 				channels = options.get('channels', [])
 				if plugins is None:
-					plugins = options.get('plugins', [])
+					plugins = []
+					for name in options.get('plugins', []):
+						args = ()
+						if ':' in name:
+							name, args = name.split(':', 1)
+							args = args.split(',')
+						plugins.append((name, args))
 
 				try:
 					self.logger.info("Starting client")
@@ -124,9 +130,9 @@ class ClientManager(gevent.Greenlet):
 					                            **{key: options[key] for key in self.INIT_ARGS if key in options})
 
 					self.logger.info("Enabling {} plugins".format(len(plugins)))
-					for plugin in plugins:
+					for plugin, args in plugins:
 						self.logger.debug("Enabling plugin {}".format(plugin))
-						ClientPlugin.enable(plugin, self.client)
+						ClientPlugin.enable(plugin, self.client, *args)
 					plugin = None # don't leave long-lived useless references
 
 					self.logger.info("Joining {} channels".format(len(channels)))
@@ -163,9 +169,10 @@ class ClientManager(gevent.Greenlet):
 							# in rare cases, disabling a plugin will cause more plugins to activate (eg. slave)
 							# we keep going until no plugins are left
 							while self.client.plugins:
-								enabled = {type(plugin) for plugin in self.client.plugins}
-								for plugin in enabled:
-									ClientPlugin.disable(plugin, self.client)
+								enabled = {(type(plugin), plugin.args) for plugin in self.client.plugins}
+								for plugin, args in enabled:
+									assert args[0] is self.client
+									ClientPlugin.disable(plugin, *args[1:])
 								plugins |= enabled
 						except Referenced:
 							self.logger.error("Failed to clean up after old connection: plugin {} still referenced.".format(plugin))
