@@ -1,5 +1,7 @@
 
-from girc import Handler
+import functools
+
+from girc import Handler, Channel
 
 from ekimbot.utils import reply
 
@@ -65,3 +67,23 @@ class CommandHandler(Handler):
 			args = [instance] + args
 		return self(*args)
 
+
+class ChannelCommandHandler(CommandHandler):
+	"""Variant of CommandHandler that checks instance.channel at handle time.
+	As such, it requires the use of bound instances.
+	It will only match if the channel name matches."""
+	def set_callback(self, callback):
+		if callback is None:
+			self.callback = None
+			return
+
+		@functools.wraps(callback)
+		def wrapper(instance, msg, *args):
+			channel = instance.channel
+			if isinstance(channel, Channel):
+				channel = channel.name
+			channel = msg.client.normalize_channel(channel)
+			if channel != msg.target:
+				return
+			return callback(instance, msg, *args)
+		self.callback = wrapper

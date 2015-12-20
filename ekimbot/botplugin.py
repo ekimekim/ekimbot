@@ -1,10 +1,8 @@
 
-import functools
-
 from plugins import Plugin
 from classtricks import classproperty, dotdict
 
-from girc import Handler
+from girc import Handler, Channel
 
 from ekimbot import utils
 from ekimbot.commands import CommandHandler
@@ -24,6 +22,10 @@ class BotPlugin(Plugin):
 		super(BotPlugin, self).__init__(*args)
 		self.logger = self.get_logger()
 		self.init()
+
+	def init(self):
+		"""Called when plugin is enabled."""
+		pass
 
 	def get_logger(self):
 		# lazy import to break cyclic dependency
@@ -69,10 +71,6 @@ class ClientPlugin(BotPlugin):
 	def get_logger(self):
 		return self.client.logger.getChild(self.name)
 
-	def init(self):
-		"""Called when plugin is enabled."""
-		pass
-
 	def cleanup(self):
 		"""Called on disable. Should clean up any ongoing operations. The default one unregisters
 		methods that are Handlers."""
@@ -92,6 +90,36 @@ class ClientPlugin(BotPlugin):
 	def store(self):
 		"""As bothandler but additionally indexes by client name"""
 		return super(ClientPlugin, self).store.setdefault(self.client.name, {})
+
+
+class ChannelPlugin(ClientPlugin):
+	"""Plugins that interact with and maintain per-channel state.
+	Mostly the same as ClientPlugin. You should use ChannelCommandHandlers to automatically
+	restrict commands to the context of the target channel."""
+
+	def __init__(self, client, channel, *args):
+		if isinstance(channel, Channel):
+			self.channel = channel
+		else:
+			self.channel = client.channel(channel)
+		super(ChannelPlugin, self).__init__(client, channel, *args)
+
+	def get_logger(self):
+		return super(ChannelPlugin, self).get_logger().getChild(self.channel.name)
+
+	@property
+	def config(self):
+		"""As ClientHandler but merges top-level config with any config found under channel name,
+		eg. {"a": 1, "b": 2, "#foo": {"b": 3}} would resolve to {"a": 1", "b": 3} for #foo
+		"""
+		d = super(ChannelPlugin, self).config
+		d.update(d.pop(self.channel.name, {}))
+		return d
+
+	@property
+	def store(self):
+		"""As ClientHandler but additionally indexes by channel name"""
+		return super(ChannelPlugin, self).store.setdefault(self.channel.name, {})
 
 
 def command_plugin(*args, **kwargs):
