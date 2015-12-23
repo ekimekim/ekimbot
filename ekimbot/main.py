@@ -77,7 +77,7 @@ class ClientManager(gevent.Greenlet):
 	"""Wrapper for a client to manage clean restarts, etc"""
 	# We mostly handle state via a synchronous main function, hence we base off Greenlet
 
-	INIT_ARGS = {'hostname', 'nick', 'port', 'password', 'ident', 'real_name'}
+	INIT_ARGS = {'hostname', 'nick', 'port', 'password', 'ident', 'real_name', 'twitch'}
 
 	client = None
 	_can_signal = False # indicates if main loop is in good state to get a stop/restart
