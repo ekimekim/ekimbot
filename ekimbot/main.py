@@ -131,7 +131,7 @@ class ClientManager(gevent.Greenlet):
 
 					self.logger.info("Enabling {} plugins".format(len(plugins)))
 					for plugin, args in plugins:
-						self.logger.debug("Enabling plugin {}".format(plugin))
+						self.logger.debug("Enabling plugin {} with args {}".format(plugin, args))
 						ClientPlugin.enable(plugin, self.client, *args)
 					plugin = None # don't leave long-lived useless references
 
