@@ -168,14 +168,19 @@ class ClientManager(gevent.Greenlet):
 						try:
 							# in rare cases, disabling a plugin will cause more plugins to activate (eg. slave)
 							# we keep going until no plugins are left
+							prev_enabled = None
 							while self.client.plugins:
 								enabled = {(type(plugin), plugin.args) for plugin in self.client.plugins}
+								if prev_enabled == enabled:
+									raise Exception(("disabling plugins did not change set of enabled plugins."
+									                 "plugins remaining: {!r}").format(enabled))
 								for plugin, args in enabled:
 									assert args[0] is self.client
 									ClientPlugin.disable(plugin, *args[1:])
 								plugins |= enabled
-						except Referenced:
-							self.logger.error("Failed to clean up after old connection: plugin {} still referenced.".format(plugin))
+								prev_enabled = enabled
+						except Exception:
+							self.logger.exception("Failed to clean up after old connection")
 							# in leiu of knowing exactly what the old client's state is, revert to config
 							plugins = options.get('plugins', [])
 						plugin = None # don't leave long-lived useless references
