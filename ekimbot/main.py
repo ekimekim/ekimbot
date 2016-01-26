@@ -32,8 +32,14 @@ def main(**options):
 		main_logger.debug("Enable {}".format(plugin))
 		BotPlugin.enable(plugin)
 
+	if config.handoff_path:
+		handoff_clients = set(config.get('handoff_clients', '').split(','))
+	else:
+		handoff_clients = set()
+
 	for name in config.clients:
-		ClientManager.spawn(name)
+		handoff_sock = os.path.join(config.handoff_path, name) if name in handoff_clients else None
+		ClientManager.spawn(name, handoff=None)
 
 	main_logger.debug("Main going to sleep")
 	try:
@@ -85,8 +91,9 @@ class ClientManager(gevent.Greenlet):
 	class _Restart(Exception):
 		"""Indicates the client manager should cleanly disconnect and reconnect"""
 
-	def __init__(self, name):
+	def __init__(self, name, handoff=False):
 		self.name = name
+		self.handoff = handoff
 		self.logger = main_logger.getChild(name)
 		super(ClientManager, self).__init__()
 
@@ -126,10 +133,20 @@ class ClientManager(gevent.Greenlet):
 				plugins = self._parse_config_plugins()
 
 				try:
-					self.logger.info("Starting client")
-					self.client = EkimbotClient(self.name,
-					                            logger=self.logger,
-					                            **{key: options[key] for key in self.INIT_ARGS if key in options})
+					if self.handoff:
+						self.logger.info("Accepting handoff from {}".format(self.handoff))
+						with closing(socket.socket(socket.AF_UNIX)) as listener:
+							listener.bind(self.handoff)
+							listener.listen(128)
+							recv_sock, _ = listener.accept()
+							with closing(recv_sock):
+								self.client = EkimbotClient.from_sock_handoff(recv_sock, name=self.name, logger=self.logger)
+						self.handoff = None
+					else:
+						self.logger.info("Starting client")
+						self.client = EkimbotClient(self.name,
+						                            logger=self.logger,
+						                            **{key: options[key] for key in self.INIT_ARGS if key in options})
 
 					self.logger.info("Enabling {} plugins".format(len(plugins)))
 					for plugin, args in plugins:
