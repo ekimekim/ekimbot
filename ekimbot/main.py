@@ -1,3 +1,4 @@
+from itertools import count
 import logging
 
 import gevent
@@ -169,8 +170,13 @@ class ClientManager(gevent.Greenlet):
 							# in rare cases, disabling a plugin will cause more plugins to activate (eg. slave)
 							# we keep going until no plugins are left
 							prev_enabled = None
+							tries = count()
 							while self.client.plugins:
 								enabled = {(type(plugin), plugin.args) for plugin in self.client.plugins}
+								self.logger.debug("Disabling plugins. Current plugins: {!r}".format(enabled))
+								if tries.next() > 100:
+									self.logger.critical("Inf loop test hit: Did loop more than 100 times. Final plugins list: {!r}".format(enabled))
+									raise Exception("disabling plugins took >100 loops to resolve, aborting as it's likely infinite")
 								if prev_enabled == enabled:
 									raise Exception(("disabling plugins did not change set of enabled plugins."
 									                 "plugins remaining: {!r}").format(enabled))
