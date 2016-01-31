@@ -98,6 +98,16 @@ class ClientManager(gevent.Greenlet):
 		if self._can_signal:
 			self.kill(self._Restart(message), block=False)
 
+	def _parse_config_plugins(self):
+		plugins = []
+		for name in config.clients_with_defaults[self.name].get('plugins', []):
+			args = ()
+			if ':' in name:
+				name, args = name.split(':', 1)
+				args = args.split(',')
+			plugins.append((name, args))
+		return plugins
+
 	def _run(self):
 		if self.name in clients:
 			return # already running, ignore second attempt to start
@@ -116,13 +126,7 @@ class ClientManager(gevent.Greenlet):
 
 				channels = options.get('channels', [])
 				if plugins is None:
-					plugins = []
-					for name in options.get('plugins', []):
-						args = ()
-						if ':' in name:
-							name, args = name.split(':', 1)
-							args = args.split(',')
-						plugins.append((name, args))
+					plugins = self._parse_config_plugins()
 
 				try:
 					self.logger.info("Starting client")
@@ -188,7 +192,7 @@ class ClientManager(gevent.Greenlet):
 						except Exception:
 							self.logger.exception("Failed to clean up after old connection")
 							# in leiu of knowing exactly what the old client's state is, revert to config
-							plugins = options.get('plugins', [])
+							plugins = self._parse_config_plugins()
 						plugin = None # don't leave long-lived useless references
 
 						self.client = None
