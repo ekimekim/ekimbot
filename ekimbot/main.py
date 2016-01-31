@@ -186,7 +186,7 @@ class ClientManager(gevent.Greenlet):
 									                 "plugins remaining: {!r}").format(enabled))
 								for plugin, args in enabled:
 									assert args[0] is self.client
-									ClientPlugin.disable(plugin, *args[1:])
+									ClientPlugin.disable(plugin, *args)
 								plugins |= enabled
 								prev_enabled = enabled
 						except Exception:
