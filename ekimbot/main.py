@@ -4,7 +4,6 @@ import logging
 import gevent
 from backoff import Backoff
 from girc import Client
-from modulemanager import Referenced
 
 from ekimbot.config import config
 from ekimbot.botplugin import BotPlugin, ClientPlugin
@@ -114,7 +113,6 @@ class ClientManager(gevent.Greenlet):
 		clients[self.name] = self
 
 		try:
-			plugins = None
 			self.retry_timer = Backoff(RETRY_START, RETRY_LIMIT, RETRY_FACTOR)
 
 			while True:
@@ -125,8 +123,7 @@ class ClientManager(gevent.Greenlet):
 				options = config.clients_with_defaults[self.name]
 
 				channels = options.get('channels', [])
-				if plugins is None:
-					plugins = self._parse_config_plugins()
+				plugins = self._parse_config_plugins()
 
 				try:
 					self.logger.info("Starting client")
@@ -167,9 +164,7 @@ class ClientManager(gevent.Greenlet):
 						self.logger.warning("Client failed, re-connecting in {}s".format(self.retry_timer.peek()), exc_info=True)
 
 					if self.client:
-						# save then disable enabled plugins
-						# note that we will re-enable all plugins that were enabled, not configured plugins
-						plugins = set()
+						# disable enabled plugins
 						try:
 							# in rare cases, disabling a plugin will cause more plugins to activate (eg. slave)
 							# we keep going until no plugins are left
@@ -187,12 +182,9 @@ class ClientManager(gevent.Greenlet):
 								for plugin, args in enabled:
 									assert args[0] is self.client
 									ClientPlugin.disable(plugin, *args)
-								plugins |= enabled
 								prev_enabled = enabled
 						except Exception:
 							self.logger.exception("Failed to clean up after old connection")
-							# in leiu of knowing exactly what the old client's state is, revert to config
-							plugins = self._parse_config_plugins()
 						plugin = None # don't leave long-lived useless references
 
 						self.client = None
