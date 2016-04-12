@@ -1,5 +1,10 @@
-from itertools import count
+import gc
+import json
 import logging
+import os
+import socket
+import sys
+from itertools import count
 
 import gevent
 from backoff import Backoff
@@ -32,14 +37,18 @@ def main(**options):
 		main_logger.debug("Enable {}".format(plugin))
 		BotPlugin.enable(plugin)
 
-	if config.handoff_path:
-		handoff_clients = set(config.get('handoff_clients', '').split(','))
+	if config.handoff_data:
+		# expects a dict { client name: {'fd': sock fd, **kwargs for from_handoff()}}
+		handoff_data = json.loads(config.handoff_data)
+		# json deals in unicode, we want bytes
+		for k, v in handoff_data.items():
+			if isinstance(v, unicode):
+				handoff_data[k] = v.encode('utf-8')
 	else:
-		handoff_clients = set()
+		handoff_data = {}
 
 	for name in config.clients:
-		handoff_sock = os.path.join(config.handoff_path, name) if name in handoff_clients else None
-		ClientManager.spawn(name, handoff=None)
+		ClientManager.spawn(name, handoff_data=handoff_data.get(name))
 
 	main_logger.debug("Main going to sleep")
 	try:
@@ -79,6 +88,39 @@ def configure_logging():
 		root.addHandler(handler)
 
 
+def handoff_all():
+	main_logger.info("Preparing to re-exec with handoffs")
+
+	handoff_data = {}
+	for name, manager in clients.items():
+		data = manager.handoff()
+		if data:
+			handoff_data[name] = data
+
+	main_logger.info("Final handoff data: {!r}".format(handoff_data))
+
+	for manager in clients.values():
+		manager.get()
+
+	main_logger.info("All managers stopped")
+
+	# TODO this will fail if the bytes contain invalid utf-8
+	handoff_data_str = json.dumps(handoff_data)
+	env = os.environ.copy()
+	env['handoff_data'] = handoff_data_str
+	main_logger.info("Calling execve({!r}, {!r}, {!r})".format(sys.executable, sys.argv, env))
+
+	# critical section - absolutely no blocking calls beyond this point
+	gc.disable() # we don't want any destructors running
+	open_fds = set(map(int, os.listdir('/proc/self/fd')))
+	for fd in open_fds - {0, 1, 2} - set(data['fd'] for data in handoff_data.values()):
+		try:
+			os.close(fd)
+		except OSError:
+			pass # this is probably EBADF, but even if it isn't we can't do anything about it
+	os.execve(sys.executable, [sys.executable, '-m', 'ekimbot'] + sys.argv[1:], env)
+
+
 class ClientManager(gevent.Greenlet):
 	"""Wrapper for a client to manage clean restarts, etc"""
 	# We mostly handle state via a synchronous main function, hence we base off Greenlet
@@ -91,9 +133,9 @@ class ClientManager(gevent.Greenlet):
 	class _Restart(Exception):
 		"""Indicates the client manager should cleanly disconnect and reconnect"""
 
-	def __init__(self, name, handoff=False):
+	def __init__(self, name, handoff_data=None):
 		self.name = name
-		self.handoff = handoff
+		self.handoff_data = handoff_data
 		self.logger = main_logger.getChild(name)
 		super(ClientManager, self).__init__()
 
@@ -103,6 +145,41 @@ class ClientManager(gevent.Greenlet):
 		# otherwise, send a _Restart exception to the main loop
 		if self._can_signal:
 			self.kill(self._Restart(message), block=False)
+
+	def handoff(self):
+		"""Gracefully shut down and prepare for handoff.
+		This stops the client and returns a dict suitable to pass as config.handoff_data[name]
+		to a child or re-exec()ed process.
+		However, if the client is not currently in a good state for handoff (eg. it is currently restarting)
+		this method will still stop the client manager, but will return None. In this case,
+		there was no state to handoff so the best thing to do is let the child re-create a new client.
+		"""
+		# Note this method intentionally leaks an fd so we can't accidentially close it
+		# due to destructors. This fd is then passed onto the child / re-exec()ed process.
+		self.logger.info("Attempting to handoff")
+
+		if not self._can_signal:
+			self.logger.info("Handoff aborted - client is not running")
+			# we are mid-restart or similar, just kill the main loop
+			self.kill(block=False)
+			return
+
+		try:
+			self.client._prepare_for_handoff()
+		except Exception:
+			# this can happen if we're mid-start, best thing to do is just abort
+			self.logger.info("Handoff aborted - client in bad state")
+			self.client.stop()
+			self.kill(block=False)
+			return
+
+		data = self.client._get_handoff_data()
+		data['fd'] = os.dup(self.client._socket.fileno())
+		self.logger.info("Handoff initiated with data {!r}".format(data))
+		# this will gracefully stop, which will cause the main loop to exit
+		self.client._finalize_handoff()
+
+		return data
 
 	def _parse_config_plugins(self):
 		plugins = []
@@ -133,15 +210,11 @@ class ClientManager(gevent.Greenlet):
 				plugins = self._parse_config_plugins()
 
 				try:
-					if self.handoff:
-						self.logger.info("Accepting handoff from {}".format(self.handoff))
-						with closing(socket.socket(socket.AF_UNIX)) as listener:
-							listener.bind(self.handoff)
-							listener.listen(128)
-							recv_sock, _ = listener.accept()
-							with closing(recv_sock):
-								self.client = EkimbotClient.from_sock_handoff(recv_sock, name=self.name, logger=self.logger)
-						self.handoff = None
+					if self.handoff_data:
+						self.logger.info("Accepting handoff with data {!r}".format(self.handoff_data))
+						client_sock = socket.fromfd(self.handoff_data.pop('fd'), socket.AF_INET, socket.SOCK_STREAM)
+						self.client = EkimbotClient._from_handoff(client_sock, name=self.name, logger=self.logger, **self.handoff_data)
+						self.handoff_data = None
 					else:
 						self.logger.info("Starting client")
 						self.client = EkimbotClient(self.name,
