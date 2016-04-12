@@ -4,6 +4,9 @@ import os
 import socket
 import sys
 
+import gevent
+
+from ekimbot.main import handoff_all
 from ekimbot.botplugin import ClientPlugin
 from ekimbot.commands import CommandHandler
 
@@ -21,20 +24,9 @@ class ProcessopsPlugin(ClientPlugin):
 
 	@CommandHandler('process restart', 0)
 	def restart(self, msg, *args):
-		"""Restart the entire python process"""
-		# We do a self-execve() - this should always do the right thing, and leave our PID unchanged.
-		# We need to suspend some stuff to ensure nothing interrupts this critical section
-		gc.disable()
-		for fd in os.listdir('/proc/self/fd'):
-			fd = int(fd)
-			if fd <= 2:
-				continue # don't close stdin/out/err
-			# the listdir will contain the listdir's fd, so we ignore errors on close
-			try:
-				os.close(fd)
-			except OSError:
-				pass
-		os.execve(sys.executable, [sys.executable, '-m', 'ekimbot'] + sys.argv[1:], os.environ)
+		"""Restart the entire python process, but handoff the connections so we don't need to re-connect"""
+		# need to run handoff_all NOT as a greenlet associated with a client
+		gevent.spawn(handoff_all)
 
 	@CommandHandler('process stop', 0)
 	def stop(self, msg, *args):
