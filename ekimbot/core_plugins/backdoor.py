@@ -1,5 +1,6 @@
 
 from ekimbot.botplugin import BotPlugin
+from ekimbot.main import clients
 
 from gevent.backdoor import BackdoorServer
 
@@ -11,7 +12,9 @@ class BackdoorPlugin(BotPlugin):
 	}
 
 	def init(self):
-		self.server = BackdoorServer(('localhost', self.config.port))
+		self.server = BackdoorServer(('localhost', self.config.port), locals={
+			'clients': clients,
+		})
 		self.server.start()
 
 	def cleanup(self):
