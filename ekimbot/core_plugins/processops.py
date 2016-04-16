@@ -26,6 +26,7 @@ class ProcessopsPlugin(ClientPlugin):
 	def restart(self, msg, *args):
 		"""Restart the entire python process, but handoff the connections so we don't need to re-connect"""
 		# need to run handoff_all NOT as a greenlet associated with a client
+		self.reply(msg, "Restarting process")
 		gevent.spawn(handoff_all)
 
 	@CommandHandler('process stop', 0)
