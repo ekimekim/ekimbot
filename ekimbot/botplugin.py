@@ -67,6 +67,7 @@ class ClientPlugin(BotPlugin):
 		self.client = client
 		super(ClientPlugin, self).__init__(client, *args)
 		Handler.register_all(client, self)
+		client.stop_handlers.add(lambda client: self.cleanup())
 
 	def get_logger(self):
 		return self.client.logger.getChild(self.name)

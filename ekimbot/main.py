@@ -12,6 +12,7 @@ from girc import Client
 
 from ekimbot.config import config
 from ekimbot.botplugin import BotPlugin, ClientPlugin
+from ekimbot.utils import list_modules
 
 RETRY_START = 1
 RETRY_LIMIT = 300
@@ -29,9 +30,9 @@ def main(**options):
 	configure_logging()
 	main_logger.info("Starting up")
 
-	for plugin in config.load_plugins:
-		main_logger.debug("Load {}".format(plugin))
-		BotPlugin.load(plugin)
+	for path in config.plugin_paths:
+		for plugin_name in list_modules(path):
+			BotPlugin.load(plugin_name)
 
 	for plugin in config.global_plugins:
 		main_logger.debug("Enable {}".format(plugin))
@@ -201,8 +202,7 @@ class ClientManager(gevent.Greenlet):
 
 			while True:
 				if self.name not in config.clients_with_defaults:
-					self.logger.info("No such client, stopping")
-					return
+					raise Exception("No such client {!r}".format(self.name))
 
 				options = config.clients_with_defaults[self.name]
 
@@ -225,7 +225,6 @@ class ClientManager(gevent.Greenlet):
 					for plugin, args in plugins:
 						self.logger.debug("Enabling plugin {} with args {}".format(plugin, args))
 						ClientPlugin.enable(plugin, self.client, *args)
-					plugin = None # don't leave long-lived useless references
 
 					self.logger.info("Joining {} channels".format(len(channels)))
 					for channel in channels:
@@ -252,32 +251,6 @@ class ClientManager(gevent.Greenlet):
 							self.logger.warning("Client failed during graceful restart", exc_info=True)
 					else:
 						self.logger.warning("Client failed, re-connecting in {}s".format(self.retry_timer.peek()), exc_info=True)
-
-					if self.client:
-						# disable enabled plugins
-						try:
-							# in rare cases, disabling a plugin will cause more plugins to activate (eg. slave)
-							# we keep going until no plugins are left
-							prev_enabled = None
-							tries = count()
-							while self.client.plugins:
-								enabled = {(type(plugin), plugin.args) for plugin in self.client.plugins}
-								self.logger.debug("Disabling plugins. Current plugins: {!r}".format(enabled))
-								if tries.next() > 100:
-									self.logger.critical("Inf loop test hit: Did loop more than 100 times. Final plugins list: {!r}".format(enabled))
-									raise Exception("disabling plugins took >100 loops to resolve, aborting as it's likely infinite")
-								if prev_enabled == enabled:
-									raise Exception(("disabling plugins did not change set of enabled plugins."
-									                 "plugins remaining: {!r}").format(enabled))
-								for plugin, args in enabled:
-									assert args[0] is self.client
-									ClientPlugin.disable(plugin, *args)
-								prev_enabled = enabled
-						except Exception:
-							self.logger.exception("Failed to clean up after old connection")
-						plugin = None # don't leave long-lived useless references
-
-						self.client = None
 
 					if not isinstance(ex, self._Restart):
 						gevent.sleep(self.retry_timer.get())

@@ -68,7 +68,7 @@ config.register('clients', default={})
 config.register('client_defaults', default={
 	'nick': 'ekimbot',
 	'command_prefix': 'ekimbot: ',
-	'plugins': ['plugops', 'config_manager', 'help'],
+	'plugins': ['config_manager', 'help'],
 })
 
 
