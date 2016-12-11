@@ -44,11 +44,9 @@ config.register('logfile', default=None)
 
 # --- Plugins ---
 # These options contain default values that should not be overwritten.
-# Instead, append to them. In particular, all core plugins are auto-loaded (but *not* auto-enabled).
+# Instead, append to them. In particular, core plugin path should always be present.
 # plugin_paths - list of paths to search for plugins
 config.register('plugin_paths', default=[core_plugins_path])
-# load_plugins - list of plugins to load on startup
-config.register('load_plugins', default=core_plugins_list[:])
 # global_plugins - list of global plugins to enable
 config.register('global_plugins', default=[])
 
@@ -68,7 +66,7 @@ config.register('clients', default={})
 config.register('client_defaults', default={
 	'nick': 'ekimbot',
 	'command_prefix': 'ekimbot: ',
-	'plugins': ['config_manager', 'help'],
+	'plugins': ['help'],
 })
 
 
