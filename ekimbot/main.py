@@ -59,7 +59,7 @@ def main(**options):
 		except (KeyboardInterrupt, SystemExit):
 			main_logger.info("Stopping all clients")
 			for manager in clients.values():
-				manager.client.quit("Shutting down", block=False)
+				manager.stop('Shutting down')
 			for manager in clients.values():
 				manager.get()
 	except BaseException:
@@ -130,6 +130,7 @@ class ClientManager(gevent.Greenlet):
 
 	client = None
 	_can_signal = False # indicates if main loop is in good state to get a stop/restart
+	_stop = False # indicates to quit after next client quit
 
 	class _Restart(Exception):
 		"""Indicates the client manager should cleanly disconnect and reconnect"""
@@ -139,6 +140,15 @@ class ClientManager(gevent.Greenlet):
 		self.handoff_data = handoff_data
 		self.logger = main_logger.getChild(name)
 		super(ClientManager, self).__init__()
+
+	def stop(self, message):
+		"""Gracefully stop the client"""
+		self._stop = True
+		if self._can_signal:
+			self.client.quit("Shutting down", block=False)
+		else:
+			# we are mid-restart or similar, just kill the main loop
+			self.kill(block=False)
 
 	def restart(self, message):
 		"""Gracefully restart the client"""
@@ -200,7 +210,7 @@ class ClientManager(gevent.Greenlet):
 		try:
 			self.retry_timer = Backoff(RETRY_START, RETRY_LIMIT, RETRY_FACTOR)
 
-			while True:
+			while not self._stop:
 				if self.name not in config.clients_with_defaults:
 					raise Exception("No such client {!r}".format(self.name))
 
@@ -252,7 +262,7 @@ class ClientManager(gevent.Greenlet):
 					else:
 						self.logger.warning("Client failed, re-connecting in {}s".format(self.retry_timer.peek()), exc_info=True)
 
-					if not isinstance(ex, self._Restart):
+					if not self._stop and not isinstance(ex, self._Restart):
 						gevent.sleep(self.retry_timer.get())
 
 		except Exception:
