@@ -6,7 +6,52 @@ from girc import Handler, Channel
 from ekimbot.utils import reply
 
 
-class CommandHandler(Handler):
+class EkimbotHandler(Handler):
+	"""Contains some standard matching criteria in order to implement bot-wide things
+	like master-mode and ignore lists"""
+	def __init__(self, *args, **kwargs):
+		"""Takes additional kwargs:
+			no_ignore=True: don't ignore senders on the ignore list
+			master: Governs how this relates to master state
+				True: (default) Only when we are master
+				False: Only when we are NOT master
+				None: Either
+		"""
+		no_ignore = kwargs.pop('no_ignore', False)
+		master = kwargs.pop('master', True)
+
+		# because we check nick state under lock, we can't wait go before sync
+		# as this would cause a deadlock. We can't catch all circumstances but we can do what we can.
+		if (
+			(master is not None or not no_ignore) and 
+			(kwargs.get('sync', False) or 'sync' in kwargs.get('before', []))
+		):
+			raise Exception("Can't define a default EkimbotHandler for before sync due to potential deadlock")
+
+		def check_sender(client, sender):
+			try:
+				if master is not None or not no_ignore:
+					current_nick = client.nick
+				if not no_ignore:
+					if any(sender.lower() == ignored_nick.lower() for ignored_nick in client.config['ignore']):
+						return False
+				if master is not None:
+					is_master = current_nick == client.config['nick']
+					if master != is_master:
+						return False
+				return True
+			except Exception:
+				# match args consider errors to be failures, so we need to report our own errors here
+				client.logger.exception("Error in EkimbotHandler check_sender")
+				return False
+
+		kwargs.update(
+			sender=check_sender
+		)
+		super(EkimbotHandler, self).__init__(*args, **kwargs)
+
+
+class CommandHandler(EkimbotHandler):
 	"""A special case of Handler designed to handle and respond to PRIVMSGs that have a command-like structure.
 	A command handler matches if all the following are true:
 		* msg is a PRIVMSG beginning with the configured command prefix.

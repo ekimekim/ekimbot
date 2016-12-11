@@ -11,7 +11,3 @@ class ClientopsPlugin(ClientPlugin):
 	@CommandHandler('restart', 0)
 	def restart(self, msg, *args):
 		self.client.restart("Reconnecting (administrative restart by {})".format(msg.sender))
-
-	@CommandHandler('stop', 0)
-	def stop(self, msg, *args):
-		self.client.quit("Stopping (administrative stop by {})".format(msg.sender))
