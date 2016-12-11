@@ -1,8 +1,9 @@
 
+import time
+
 import gevent
 
-import modulemanager
-from girc import Handler, Client, replycodes
+from girc import Handler
 
 from ekimbot.botplugin import ClientPlugin
 from ekimbot.commands import CommandHandler

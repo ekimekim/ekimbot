@@ -29,16 +29,21 @@ class EkimbotHandler(Handler):
 			raise Exception("Can't define a default EkimbotHandler for before sync due to potential deadlock")
 
 		def check_sender(client, sender):
-			if master is not None or not no_ignore:
-				current_nick = client.nick
-			if not no_ignore:
-				if any(current_nick.lower() == ignored_nick.lower() for ignored_nick in client.config.ignore):
-					return False
-			if master is not None:
-				is_master = current_nick == client.config.nick
-				if master != is_master:
-					return False
-			return True
+			try:
+				if master is not None or not no_ignore:
+					current_nick = client.nick
+				if not no_ignore:
+					if any(sender.lower() == ignored_nick.lower() for ignored_nick in client.config['ignore']):
+						return False
+				if master is not None:
+					is_master = current_nick == client.config['nick']
+					if master != is_master:
+						return False
+				return True
+			except Exception:
+				# match args consider errors to be failures, so we need to report our own errors here
+				client.logger.exception("Error in EkimbotHandler check_sender")
+				return False
 
 		kwargs.update(
 			sender=check_sender
