@@ -21,7 +21,7 @@ class SlavePlugin(ClientPlugin):
 	}
 
 	master = True
-	saved_plugins = None
+	abdicated_until = None
 
 	def init(self):
 		self.check_user_poller = self.client._group.spawn(self.poll_check_users)
