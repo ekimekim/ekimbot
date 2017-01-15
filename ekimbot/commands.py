@@ -107,6 +107,7 @@ class CommandHandler(EkimbotHandler):
 		args = self._get_args(client, msg.payload)
 		if len(args) < self.nargs:
 			reply(client, msg, "Command {!r} requires at least {} args".format(' '.join(self.name), self.nargs))
+			return
 		args = [msg] + list(args)
 		if instance:
 			args = [instance] + args
