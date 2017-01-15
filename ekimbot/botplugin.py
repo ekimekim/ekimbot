@@ -44,8 +44,11 @@ class BotPlugin(Plugin):
 
 	@property
 	def _store(self):
-		"""Return actual store object"""
-		return Store(config.store_path)
+		"""Return actual store object.
+		We save a reference after first access to keep it alive for the lifetime of the plugin,
+		even though Store has singleton semantics."""
+		self.__store = Store(config.store_path)
+		return self.__store
 
 	@property
 	def store(self):
