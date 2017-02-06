@@ -58,6 +58,9 @@ class CommandHandler(EkimbotHandler):
 		* After being split on whitespace, the leading words match the values in the "name" arg, case-insensitive.
 	It is checked that there are at least nargs further words. If there isn't, an error message is replied.
 	(msg, *args) is passed to the callback, where args is the words after the leading words that match "name".
+
+	Commands CAN be run when not the master, however the default command prefix will not match.
+	Only the current nick directly ("{nick}: ") will be considered a valid command.
 	"""
 	def __init__(self, name, nargs, *args, **kwargs):
 		"""Name may be either a string like "mycmd subcmd", or a list like ["mycmd", "subcmd"]
@@ -73,18 +76,24 @@ class CommandHandler(EkimbotHandler):
 		kwargs.update(
 			command='PRIVMSG',
 			payload=self._match_payload,
+			master=None, # we want to be able to respond to directly addressed commands when not master
 		)
 		super(CommandHandler, self).__init__(*args, **kwargs)
 
 	def _get_args(self, client, payload):
-		prefix = client.config['command_prefix']
-		if not payload.startswith(prefix):
-			return
-		payload = payload[len(prefix):]
-		payload = payload.split()
-		if [word.lower() for word in payload[:len(self.name)]] != self.name:
-			return
-		return payload[len(self.name):]
+		current_nick = client.nick
+		prefixes = ['{}: '.format(current_nick)]
+		is_master = current_nick == client.config['nick']
+		if is_master:
+			prefixes.append(client.config['command_prefix'])
+		for prefix in prefixes:
+			if not payload.startswith(prefix):
+				continue
+			payload = payload[len(prefix):]
+			payload = payload.split()
+			if [word.lower() for word in payload[:len(self.name)]] != self.name:
+				continue
+			return payload[len(self.name):]
 
 	def _match_payload(self, client, payload):
 		return self._get_args(client, payload) is not None
