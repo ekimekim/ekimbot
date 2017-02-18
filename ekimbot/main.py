@@ -293,3 +293,10 @@ class EkimbotClient(Client):
 			# this Client is not the active client - this is a weird situation, let's do nothing
 			return
 		clients[self.name].restart(message)
+
+	def is_master(self, nick=None):
+		"""Return whether client is currently master for the configured nick.
+		Optionally pass in our current nick, else use self.nick"""
+		if nick is None:
+			nick = self.nick
+		return nick == self.config['nick']

@@ -36,8 +36,7 @@ class EkimbotHandler(Handler):
 					if any(sender.lower() == ignored_nick.lower() for ignored_nick in client.config['ignore']):
 						return False
 				if master is not None:
-					is_master = current_nick == client.config['nick']
-					if master != is_master:
+					if master != client.is_master(current_nick):
 						return False
 				return True
 			except Exception:
@@ -83,8 +82,7 @@ class CommandHandler(EkimbotHandler):
 	def _get_args(self, client, payload):
 		current_nick = client.nick
 		prefixes = ['{}: '.format(current_nick)]
-		is_master = current_nick == client.config['nick']
-		if is_master:
+		if client.is_master(current_nick):
 			prefixes.append(client.config['command_prefix'])
 		for prefix in prefixes:
 			if not payload.startswith(prefix):

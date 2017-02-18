@@ -20,7 +20,6 @@ class SlavePlugin(ClientPlugin):
 		'poll_interval': 5,
 	}
 
-	master = True
 	abdicated_until = None
 
 	def init(self):
@@ -41,7 +40,7 @@ class SlavePlugin(ClientPlugin):
 		Also called peroidically in case this happened without us being able to see it.
 		Checks if any user can be seen with master nick. If not, tries to change nick to master nick.
 		"""
-		if self.client.nick == self.master_nick:
+		if self.client.is_master():
 			return
 		if self.abdicated_until is not None and time.time() < self.abdicated_until:
 			return
