@@ -47,7 +47,7 @@ class SlavePlugin(ClientPlugin):
 		for channel in self.client._channels.values():
 			if channel.users_ready.is_set() and self.master_nick in channel.users.users:
 				return
-		self.client.nick = self.master_nick
+		self.client.try_change_nick(self.master_nick) # don't increment nick and try again if we fail, just try once.
 
 	def poll_check_users(self):
 		while True:
@@ -58,7 +58,7 @@ class SlavePlugin(ClientPlugin):
 	def abdicate(self, msg, *args):
 		if args:
 			try:
-				timeout = int(args[0])
+				timeout = float(args[0])
 			except ValueError:
 				self.reply(msg, "Bad timeout value")
 				return
