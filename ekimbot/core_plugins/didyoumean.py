@@ -25,13 +25,13 @@ class DidYouMeanPlugin(ClientPlugin):
 		# Otherwise, if the whole thing is close in edit distance to one match, we suggest it,
 		# or just 'no such command'.
 
-		words = msg.payload[len(client.config['command_prefix']):].split()
+		command = msg.payload[len(client.config['command_prefix']):]
+		words = command.split()
 		names = [h.name for h in client.message_handlers if isinstance(h, CommandHandler)]
 		help_enabled = ClientPlugin.get_plugin('help', client)
 
-		if not words:
-			# special case - no command given
-			self.reply(msg, "Yes, what?")
+		if not command or command.startswith(' '):
+			# special case - no command given. we want to ignore this to prevent accidental usage.
 			return
 
 		longest_word_prefix = []
