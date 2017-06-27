@@ -2,6 +2,8 @@
 import functools
 
 from girc import Handler, Channel
+from girc.common import iterable
+import modulemanager
 
 from ekimbot.utils import reply
 
@@ -22,9 +24,12 @@ class EkimbotHandler(Handler):
 
 		# because we check nick state under lock, we can't wait go before sync
 		# as this would cause a deadlock. We can't catch all circumstances but we can do what we can.
+		before = kwargs.get('before', [])
+		if not iterable(before):
+			before = [before]
 		if (
-			(master is not None or not no_ignore) and 
-			(kwargs.get('sync', False) or 'sync' in kwargs.get('before', []))
+			(master is not None or not no_ignore) and
+			(kwargs.get('sync', False) or 'sync' in before)
 		):
 			raise Exception("Can't define a default EkimbotHandler for before sync due to potential deadlock")
 
@@ -68,6 +73,8 @@ class CommandHandler(EkimbotHandler):
 			help: Help string that describes command. First line is taken as a summary, subsequent lines
 			      are long description. If not given, taken from callback.
 		"""
+		didyoumean = modulemanager.load('didyoumean') # this is basically an import
+
 		self.name = name.split() if isinstance(name, basestring) else name
 		self.name = [word.lower() for word in self.name]
 		self.nargs = nargs
@@ -76,6 +83,7 @@ class CommandHandler(EkimbotHandler):
 			command='PRIVMSG',
 			payload=self._match_payload,
 			master=None, # we want to be able to respond to directly addressed commands when not master
+			before=didyoumean.DidYouMeanPlugin.didyoumean, # didyoumean runs last so it can check if anything matched
 		)
 		super(CommandHandler, self).__init__(*args, **kwargs)
 
@@ -111,6 +119,7 @@ class CommandHandler(EkimbotHandler):
 		return summary, '\n'.join(line.strip() for line in helpstr.split('\n'))
 
 	def _handle(self, client, msg, instance=None):
+		msg.extra['command_matched'] = True # this tells did_you_mean that a command matched
 		args = self._get_args(client, msg.payload)
 		if len(args) < self.nargs:
 			reply(client, msg, "Command {!r} requires at least {} args".format(' '.join(self.name), self.nargs))
