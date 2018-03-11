@@ -1,4 +1,5 @@
 
+import random
 import time
 
 import gevent
@@ -47,6 +48,7 @@ class SlavePlugin(ClientPlugin):
 		for channel in self.client._channels.values():
 			if channel.users_ready.is_set() and self.master_nick in channel.users.users:
 				return
+		gevent.sleep(random.random() * 0.5) # prevent crashing txircd by changing nick at the same time as another ekimbot
 		self.client.try_change_nick(self.master_nick) # don't increment nick and try again if we fail, just try once.
 
 	def poll_check_users(self):
