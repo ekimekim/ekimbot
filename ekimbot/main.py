@@ -2,6 +2,7 @@ import gc
 import json
 import logging
 import os
+import signal
 import socket
 import sys
 
@@ -49,6 +50,10 @@ def main(**options):
 
 	for name in config.clients:
 		ClientManager.spawn(name, handoff_data=handoff_data.get(name))
+
+	def term(sig, frame):
+		raise KeyboardInterrupt
+	signal.signal(signal.SIGTERM, term)
 
 	main_logger.debug("Main going to sleep")
 	try:
